@@ -2,7 +2,7 @@
   "name": "survey-checkbox-backend",
   "version": "1.0.0",
   "private": true,
-  "description": "REST API for the survey checkbox system (Express + PostgreSQL + Telegram notifications)",
+  "description": "REST API for the survey checkbox system (Express + Firebase Firestore + Telegram notifications)",
   "type": "module",
   "main": "src/server.js",
   "engines": {
@@ -11,8 +11,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "db:setup": "node src/utils/dbSetup.js",
-    "db:seed": "node src/utils/dbSetup.js --seed"
+    "db:seed": "node src/utils/seed.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -22,7 +21,6 @@
     "firebase-admin": "^13.10.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
-    "morgan": "^1.10.0",
-    "pg": "^8.13.1"
+    "morgan": "^1.10.0"
   }
 }

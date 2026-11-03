@@ -56,7 +56,7 @@ export default function Questions() {
     setQuestions(() => list);
     setActionError(null);
     try {
-      await questionApi.reorder(Number(surveyId), list.map((q) => q.id));
+      await questionApi.reorder(surveyId, list.map((q) => q.id));
     } catch (err) {
       setActionError(err);
       reload();
@@ -262,7 +262,7 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
     setError('');
     try {
       const saved = isNew
-        ? await questionApi.create({ ...payload, surveyId: Number(surveyId) })
+        ? await questionApi.create({ ...payload, surveyId })
         : await questionApi.update(question.id, payload);
       onSaved(saved);
     } catch (err) {

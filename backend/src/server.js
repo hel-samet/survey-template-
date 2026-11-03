@@ -2,7 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { pool } from './config/database.js';
+import { collections } from './config/database.js';
 import { env, isProduction } from './config/env.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
@@ -23,7 +23,7 @@ app.use(morgan(isProduction ? 'combined' : 'dev'));
 
 app.get('/api/health', async (req, res) => {
   try {
-    await pool.query('SELECT 1');
+    await collections.settings().limit(1).get();
     res.json({ status: 'ok', database: 'ok' });
   } catch {
     res.status(503).json({ status: 'degraded', database: 'unreachable' });
@@ -45,7 +45,7 @@ const server = app.listen(env.port, () => {
 
 const shutdown = (signal) => {
   console.log(`[server] ${signal} received, shutting down`);
-  server.close(() => pool.end().finally(() => process.exit(0)));
+  server.close(() => process.exit(0));
 };
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));

@@ -1,32 +1,28 @@
-import { query } from '../config/database.js';
+import { collections, FieldValue } from '../config/database.js';
 import { env } from '../config/env.js';
 import { ApiError } from '../utils/ApiError.js';
 
 const TELEGRAM_API = 'https://api.telegram.org';
+const settingsDoc = () => collections.settings().doc('telegram');
 
 // Settings saved from the admin panel take precedence over the .env defaults.
 export async function getSettings() {
-  const { rows } = await query(
-    'SELECT bot_token AS "botToken", chat_id AS "chatId", enabled FROM telegram_settings WHERE id = 1',
-  );
-  const row = rows[0];
+  const doc = await settingsDoc().get();
+  const saved = doc.exists ? doc.data() : null;
   return {
-    botToken: row?.botToken || env.telegram.botToken,
-    chatId: row?.chatId || env.telegram.chatId,
-    enabled: row ? row.enabled : Boolean(env.telegram.botToken && env.telegram.chatId),
+    botToken: saved?.botToken || env.telegram.botToken,
+    chatId: saved?.chatId || env.telegram.chatId,
+    enabled: saved ? Boolean(saved.enabled) : Boolean(env.telegram.botToken && env.telegram.chatId),
   };
 }
 
 export async function saveSettings({ botToken, chatId, enabled }) {
-  await query(
-    `INSERT INTO telegram_settings (id, bot_token, chat_id, enabled)
-     VALUES (1, $1, $2, $3)
-     ON CONFLICT (id) DO UPDATE
-       SET bot_token = EXCLUDED.bot_token,
-           chat_id   = EXCLUDED.chat_id,
-           enabled   = EXCLUDED.enabled`,
-    [botToken || null, chatId || null, Boolean(enabled)],
-  );
+  await settingsDoc().set({
+    botToken: botToken || null,
+    chatId: chatId || null,
+    enabled: Boolean(enabled),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
   return getSettings();
 }
 

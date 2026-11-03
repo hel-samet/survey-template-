@@ -38,21 +38,21 @@ To add a language, create `i18n/xx.js`, register it in `i18n/index.js` (`transla
 
 ## Backend (`backend/src`)
 
-Requests flow `routes → middleware → controllers → services / models → PostgreSQL`.
+Requests flow `routes → middleware → controllers → services / models → Firestore`.
 
 | Path | Purpose |
 | --- | --- |
 | `server.js` | Express app, security middleware, route mounting, graceful shutdown |
 | `config/env.js` | Reads and validates environment variables |
-| `config/database.js` | `pg` pool, `query`, `withTransaction`, `toJson` |
+| `config/database.js` | Firebase Admin init, `db`, `collections`, `deleteQuery`, `toIso` |
 | `routes/` | URL → controller mapping and per-route auth / rate limiting |
 | `controllers/` | Parse the request, call services/models, shape the JSON response |
-| `models/` | SQL for `surveys`, `questions`, `responses` |
+| `models/` | Firestore access for `surveys`, `questions`, `responses` |
 | `services/surveyService.js` | Survey + questions loading, response submission, report and CSV building, dashboard stats |
 | `services/telegramService.js` | Telegram settings storage and `sendMessage` |
 | `services/notificationService.js` | Formats the "new response" Telegram message |
 | `middleware/` | `requireAuth` (JWT), `errorHandler`, rate limiters |
 | `validators/` | Input validation for surveys, questions and answers |
-| `utils/` | `ApiError`, `asyncHandler`, `parseId`, `dbSetup` (applies schema/seed) |
+| `utils/` | `ApiError`, `asyncHandler`, `parseId`, `seed` (inserts `database/seed.json`) |
 
 > `routes/authRoutes.js`, `controllers/authController.js`, `middleware/rateLimiter.js`, `pages/admin/Login.jsx` and the extra layout/feedback components were added on top of the original outline because the admin panel needs them.

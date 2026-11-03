@@ -1,19 +1,21 @@
 # Deployment
 
-The frontend is a static site on **GitHub Pages**; the backend and database run on **Render** (or any VPS). Deploy the backend first so you have its URL for the frontend build.
+The frontend is a static site on **GitHub Pages**, the backend runs on **Render** (or any VPS), and data lives in **Firebase Cloud Firestore**. Deploy the backend first so you have its URL for the frontend build.
 
-## 1. Database
+## 1. Database (Firestore)
 
-Create a PostgreSQL database (Render Postgres, Neon, Supabase or your own server) and copy its connection string. Apply the schema from your machine:
+Follow [DATABASE.md](DATABASE.md) steps 1–2: create the Firebase project and Firestore database, publish `database/firestore.rules`, and download a service account key. Then seed the sample survey from your machine (with `FIREBASE_SERVICE_ACCOUNT` in `backend/.env`):
 
 ```bash
 cd backend
-DATABASE_URL="postgres://..." DATABASE_SSL=true JWT_SECRET=x ADMIN_USERNAME=x ADMIN_PASSWORD=x npm run db:seed
+npm run db:seed
 ```
 
-(`db:seed` also inserts the sample survey; use `db:setup` for an empty database.)
-
 ## 2. Backend on Render
+
+**Quickest:** Render dashboard → **New → Blueprint** → pick this repo. `render.yaml` creates the `survey-api` service; fill in `ADMIN_PASSWORD` and `FIREBASE_SERVICE_ACCOUNT` (base64 of the key file) when asked.
+
+**Manual:**
 
 1. **New → Web Service**, connect the repository.
 2. Settings:
@@ -26,8 +28,7 @@ DATABASE_URL="postgres://..." DATABASE_SSL=true JWT_SECRET=x ADMIN_USERNAME=x AD
 | Key | Example |
 | --- | --- |
 | `NODE_ENV` | `production` |
-| `DATABASE_URL` | Render's *Internal Database URL* |
-| `DATABASE_SSL` | `true` for external URLs, `false` for Render internal URLs |
+| `FIREBASE_SERVICE_ACCOUNT` | base64 of the service account JSON |
 | `CORS_ORIGIN` | `https://<github-user>.github.io` |
 | `ADMIN_USERNAME` | `admin` |
 | `ADMIN_PASSWORD` | a strong password |
@@ -42,7 +43,7 @@ Render sets `PORT` automatically. Free instances sleep after inactivity, so the 
 git clone <repo> && cd <repo>/backend
 cp .env.example .env && nano .env
 npm install --omit=dev
-npm run db:setup
+npm run db:seed   # optional sample survey
 npm install -g pm2
 pm2 start src/server.js --name survey-api
 pm2 save && pm2 startup

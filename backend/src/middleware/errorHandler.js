@@ -11,9 +11,9 @@ export function errorHandler(err, req, res, next) {
 
   if (err.type === 'entity.parse.failed') {
     error = new ApiError(400, 'Request body is not valid JSON');
-  } else if (err.code === '23503') {
-    // PostgreSQL foreign key violation, e.g. a question pointing at a deleted survey
-    error = new ApiError(400, 'Referenced record does not exist');
+  } else if (err.code === 5) {
+    // Firestore NOT_FOUND, e.g. updating a counter on a survey deleted mid-request
+    error = new ApiError(404, 'Referenced record does not exist');
   }
 
   const status = error.status || 500;

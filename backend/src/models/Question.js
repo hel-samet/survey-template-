@@ -1,65 +1,80 @@
-import { query, toJson, withTransaction } from '../config/database.js';
+import { collections, db, FieldValue } from '../config/database.js';
 
-const SELECT = `
-  SELECT id,
-         survey_id   AS "surveyId",
-         text, type, options, settings,
-         is_required AS "isRequired",
-         position
-  FROM questions`;
+function toQuestion(doc) {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    surveyId: data.surveyId,
+    text: data.text ?? {},
+    type: data.type,
+    options: data.options ?? [],
+    settings: data.settings ?? {},
+    isRequired: Boolean(data.isRequired),
+    position: data.position ?? 0,
+  };
+}
+
+const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 
 export const Question = {
   async findBySurvey(surveyId) {
-    const { rows } = await query(`${SELECT} WHERE survey_id = $1 ORDER BY position, id`, [surveyId]);
-    return rows;
+    const snapshot = await collections.questions().where('surveyId', '==', surveyId).get();
+    return snapshot.docs.map(toQuestion).sort(byPosition);
   },
 
   async findById(id) {
-    const { rows } = await query(`${SELECT} WHERE id = $1`, [id]);
-    return rows[0] || null;
+    const doc = await collections.questions().doc(id).get();
+    return doc.exists ? toQuestion(doc) : null;
   },
 
   async create({ surveyId, text, type, options = [], settings = {}, isRequired = false, position }) {
-    const { rows } = await query(
-      `INSERT INTO questions (survey_id, text, type, options, settings, is_required, position)
-       VALUES ($1, $2, $3, $4, $5, $6,
-               COALESCE($7, (SELECT COALESCE(MAX(position) + 1, 0) FROM questions WHERE survey_id = $1)))
-       RETURNING id`,
-      [surveyId, toJson(text), type, toJson(options), toJson(settings), isRequired, position ?? null],
-    );
-    return Question.findById(rows[0].id);
+    if (position === undefined) {
+      const existing = await Question.findBySurvey(surveyId);
+      position = existing.length ? existing[existing.length - 1].position + 1 : 0;
+    }
+
+    const ref = collections.questions().doc();
+    const batch = db.batch();
+    batch.set(ref, {
+      surveyId,
+      text,
+      type,
+      options,
+      settings,
+      isRequired,
+      position,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    batch.update(collections.surveys().doc(surveyId), { questionCount: FieldValue.increment(1) });
+    await batch.commit();
+    return Question.findById(ref.id);
   },
 
   async update(id, { text, type, options, settings, isRequired, position }) {
-    const { rowCount } = await query(
-      `UPDATE questions
-          SET text        = COALESCE($2::jsonb, text),
-              type        = COALESCE($3, type),
-              options     = COALESCE($4::jsonb, options),
-              settings    = COALESCE($5::jsonb, settings),
-              is_required = COALESCE($6, is_required),
-              position    = COALESCE($7, position)
-        WHERE id = $1`,
-      [id, toJson(text), type ?? null, toJson(options), toJson(settings), isRequired ?? null, position ?? null],
-    );
-    return rowCount ? Question.findById(id) : null;
+    const ref = collections.questions().doc(id);
+    if (!(await ref.get()).exists) return null;
+    await ref.update({ text, type, options, settings, isRequired, position, updatedAt: FieldValue.serverTimestamp() });
+    return Question.findById(id);
   },
 
   async remove(id) {
-    const { rowCount } = await query('DELETE FROM questions WHERE id = $1', [id]);
-    return rowCount > 0;
+    const question = await Question.findById(id);
+    if (!question) return false;
+
+    const batch = db.batch();
+    batch.delete(collections.questions().doc(id));
+    batch.update(collections.surveys().doc(question.surveyId), { questionCount: FieldValue.increment(-1) });
+    await batch.commit();
+    return true;
   },
 
   async reorder(surveyId, orderedIds) {
-    await withTransaction(async (client) => {
-      for (const [position, id] of orderedIds.entries()) {
-        await client.query('UPDATE questions SET position = $1 WHERE id = $2 AND survey_id = $3', [
-          position,
-          id,
-          surveyId,
-        ]);
-      }
+    const belongsToSurvey = new Set((await Question.findBySurvey(surveyId)).map((q) => q.id));
+    const batch = db.batch();
+    orderedIds.forEach((id, position) => {
+      if (belongsToSurvey.has(id)) batch.update(collections.questions().doc(id), { position });
     });
+    await batch.commit();
     return Question.findBySurvey(surveyId);
   },
 };

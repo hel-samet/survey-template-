@@ -5,8 +5,8 @@ A bilingual (English / ខ្មែរ) survey platform with checkbox, single-ch
 | Part | Tech | Hosting |
 | --- | --- | --- |
 | `frontend/` | React 18 + Vite + React Router | GitHub Pages |
-| `backend/` | Node.js 18+ + Express + PostgreSQL | Render or any VPS |
-| `database/` | PostgreSQL schema + seed data | Render Postgres, Neon, Supabase, self-hosted |
+| `backend/` | Node.js 18+ + Express + Firebase Admin SDK | Render or any VPS |
+| `database/` | Firestore security rules + seed data | Firebase Cloud Firestore |
 
 ## Features
 
@@ -18,17 +18,16 @@ A bilingual (English / ខ្មែរ) survey platform with checkbox, single-ch
 
 ## Quick start (local)
 
-Requirements: Node.js 18+ and PostgreSQL 13+.
+Requirements: Node.js 18+ and a Firebase project with Firestore enabled (see [DATABASE.md](docs/DATABASE.md)).
 
 ```bash
-# 1. Database
-createdb -E UTF8 -T template0 survey_db   # UTF8 is required for Khmer text
+# 1. Database: create a Firestore database and download a service account key
 
 # 2. Backend
 cd backend
-cp .env.example .env          # edit DATABASE_URL, ADMIN_PASSWORD, JWT_SECRET
+cp .env.example .env          # set FIREBASE_SERVICE_ACCOUNT, ADMIN_PASSWORD, JWT_SECRET
 npm install
-npm run db:seed               # creates tables + a sample bilingual survey
+npm run db:seed               # adds a sample bilingual survey
 npm run dev                   # http://localhost:4000/api
 
 # 3. Frontend (new terminal)

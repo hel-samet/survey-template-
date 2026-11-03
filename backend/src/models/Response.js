@@ -1,107 +1,130 @@
-import { query, toJson } from '../config/database.js';
+import { collections, db, FieldValue, Timestamp, toIso } from '../config/database.js';
+import { Survey } from './Survey.js';
 
-const SELECT = `
-  SELECT id,
-         survey_id       AS "surveyId",
-         respondent_name AS "respondentName",
-         respondent_email AS "respondentEmail",
-         respondent_uid IS NOT NULL AS "signedIn",
-         resubmit_allowed AS "resubmitAllowed",
-         answers,
-         created_at      AS "createdAt"
-  FROM responses`;
+function toResponse(doc) {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    surveyId: data.surveyId,
+    respondentName: data.respondentName ?? null,
+    respondentEmail: data.respondentEmail ?? null,
+    signedIn: Boolean(data.respondentUid),
+    resubmitAllowed: Boolean(data.resubmitAllowed),
+    answers: data.answers ?? {},
+    createdAt: toIso(data.createdAt),
+  };
+}
 
-// PostgreSQL unique_violation, raised by uq_responses_one_per_user on a double submit.
-const UNIQUE_VIOLATION = '23505';
+const newestFirst = (a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
+
+// One lock document per (survey, Google account). `batch.create` fails if it already exists,
+// which makes "one answer per person" atomic even when two tabs submit at once.
+const lockRef = (surveyId, uid) => collections.submissionLocks().doc(`${surveyId}_${uid}`);
+const ALREADY_EXISTS = 6;
 
 export const Response = {
   async create({ surveyId, respondentName = null, respondentUid = null, respondentEmail = null, answers }) {
+    const ref = collections.responses().doc();
+    const data = {
+      surveyId,
+      respondentName,
+      respondentUid,
+      respondentEmail,
+      resubmitAllowed: false,
+      answers,
+      createdAt: Timestamp.now(),
+    };
+
+    const batch = db.batch();
+    batch.set(ref, data);
+    batch.update(collections.surveys().doc(surveyId), { responseCount: FieldValue.increment(1) });
+    if (respondentUid) {
+      batch.create(lockRef(surveyId, respondentUid), { surveyId, responseId: ref.id, createdAt: data.createdAt });
+    }
+
     try {
-      const { rows } = await query(
-        `INSERT INTO responses (survey_id, respondent_name, respondent_uid, respondent_email, answers)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, survey_id AS "surveyId", respondent_name AS "respondentName",
-                   respondent_email AS "respondentEmail", answers, created_at AS "createdAt"`,
-        [surveyId, respondentName, respondentUid, respondentEmail, toJson(answers)],
-      );
-      return rows[0];
+      await batch.commit();
     } catch (err) {
-      if (err.code === UNIQUE_VIOLATION) err.alreadySubmitted = true;
+      if (err.code === ALREADY_EXISTS) err.alreadySubmitted = true;
       throw err;
     }
+
+    const { respondentUid: _uid, ...rest } = data;
+    return { id: ref.id, ...rest, createdAt: toIso(data.createdAt) };
   },
 
   // The response that currently blocks this person from answering again, if any.
   async findBlocking(surveyId, respondentUid) {
-    const { rows } = await query(
-      `${SELECT} WHERE survey_id = $1 AND respondent_uid = $2 AND NOT resubmit_allowed LIMIT 1`,
-      [surveyId, respondentUid],
-    );
-    return rows[0] || null;
+    const lock = await lockRef(surveyId, respondentUid).get();
+    if (!lock.exists) return null;
+    return Response.findById(lock.data().responseId);
   },
 
   async allowResubmit(id) {
-    const { rowCount } = await query(
-      'UPDATE responses SET resubmit_allowed = TRUE WHERE id = $1 AND respondent_uid IS NOT NULL',
-      [id],
-    );
-    return rowCount > 0;
+    const doc = await collections.responses().doc(id).get();
+    const uid = doc.exists ? doc.data().respondentUid : null;
+    if (!uid) return false;
+
+    const batch = db.batch();
+    batch.update(doc.ref, { resubmitAllowed: true });
+    batch.delete(lockRef(doc.data().surveyId, uid));
+    await batch.commit();
+    return true;
   },
 
   async findById(id) {
-    const { rows } = await query(`${SELECT} WHERE id = $1`, [id]);
-    return rows[0] || null;
+    const doc = await collections.responses().doc(id).get();
+    return doc.exists ? toResponse(doc) : null;
+  },
+
+  // Equality filter + in-memory sort avoids needing a composite (surveyId, createdAt) index.
+  async findAllBySurvey(surveyId) {
+    const snapshot = await collections.responses().where('surveyId', '==', surveyId).get();
+    return snapshot.docs.map(toResponse).sort(newestFirst);
   },
 
   async findBySurvey(surveyId, { limit = 20, offset = 0 } = {}) {
-    const { rows } = await query(
-      `${SELECT} WHERE survey_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3`,
-      [surveyId, limit, offset],
-    );
-    return rows;
-  },
-
-  async findAllBySurvey(surveyId) {
-    const { rows } = await query(`${SELECT} WHERE survey_id = $1 ORDER BY created_at DESC, id DESC`, [surveyId]);
-    return rows;
+    const all = await Response.findAllBySurvey(surveyId);
+    return all.slice(offset, offset + limit);
   },
 
   async countBySurvey(surveyId) {
-    const { rows } = await query('SELECT COUNT(*)::int AS count FROM responses WHERE survey_id = $1', [surveyId]);
-    return rows[0].count;
+    const snapshot = await collections.responses().where('surveyId', '==', surveyId).count().get();
+    return snapshot.data().count;
   },
 
   async countAll() {
-    const { rows } = await query('SELECT COUNT(*)::int AS count FROM responses');
-    return rows[0].count;
+    const snapshot = await collections.responses().count().get();
+    return snapshot.data().count;
   },
 
   async countSince(days) {
-    const { rows } = await query(
-      `SELECT COUNT(*)::int AS count FROM responses WHERE created_at >= NOW() - make_interval(days => $1)`,
-      [days],
-    );
-    return rows[0].count;
+    const since = Timestamp.fromMillis(Date.now() - days * 24 * 60 * 60 * 1000);
+    const snapshot = await collections.responses().where('createdAt', '>=', since).count().get();
+    return snapshot.data().count;
   },
 
   async findRecent(limit = 8) {
-    const { rows } = await query(
-      `SELECT r.id,
-              r.survey_id       AS "surveyId",
-              s.title           AS "surveyTitle",
-              r.respondent_name AS "respondentName",
-              r.created_at      AS "createdAt"
-         FROM responses r
-         JOIN surveys s ON s.id = r.survey_id
-        ORDER BY r.created_at DESC
-        LIMIT $1`,
-      [limit],
-    );
-    return rows;
+    const snapshot = await collections.responses().orderBy('createdAt', 'desc').limit(limit).get();
+    const responses = snapshot.docs.map(toResponse);
+    const titles = await Survey.findTitles(responses.map((r) => r.surveyId));
+    return responses.map(({ answers: _omit, ...response }) => ({
+      ...response,
+      surveyTitle: titles[response.surveyId] ?? {},
+    }));
   },
 
+  // Deleting a signed-in response also lifts its lock, so that person can answer again.
   async remove(id) {
-    const { rowCount } = await query('DELETE FROM responses WHERE id = $1', [id]);
-    return rowCount > 0;
+    const doc = await collections.responses().doc(id).get();
+    if (!doc.exists) return false;
+    const { surveyId, respondentUid, resubmitAllowed } = doc.data();
+
+    const batch = db.batch();
+    batch.delete(doc.ref);
+    batch.update(collections.surveys().doc(surveyId), { responseCount: FieldValue.increment(-1) });
+    if (respondentUid && !resubmitAllowed) batch.delete(lockRef(surveyId, respondentUid));
+    await batch.commit();
+    return true;
   },
 };

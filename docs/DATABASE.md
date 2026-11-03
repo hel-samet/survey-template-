@@ -1,73 +1,105 @@
-# Database
+# Database (Firebase Cloud Firestore)
 
-PostgreSQL 13+. **The database must use UTF8 encoding** to store Khmer text. On Windows, PostgreSQL often defaults to WIN1252, so create it explicitly:
+The backend stores everything in **Cloud Firestore** through the Firebase Admin SDK. Browsers never talk to Firestore directly; they call the Express API, which validates input and enforces admin auth.
 
-```sql
-CREATE DATABASE survey_db ENCODING 'UTF8' TEMPLATE template0;
+## 1. Create the Firebase project
+
+1. Go to https://console.firebase.google.com → **Add project**.
+2. **Build → Firestore Database → Create database**. Pick a location close to your users (e.g. `asia-southeast1` for Cambodia) and start in **production mode**.
+3. **Rules** tab → paste [`database/firestore.rules`](../database/firestore.rules) → **Publish**. It denies all client access; the Admin SDK used by the backend is not affected by rules.
+4. **Project settings (⚙) → Service accounts → Generate new private key**. This downloads a JSON file. Treat it like a password: never commit it (it is already in `.gitignore`).
+
+## 2. Give the backend the credentials
+
+Pick one:
+
+| Option | Where | Value |
+| --- | --- | --- |
+| `FIREBASE_SERVICE_ACCOUNT` (recommended) | `.env`, Render, VPS | The JSON on one line, or base64 of the file |
+| `GOOGLE_APPLICATION_CREDENTIALS` | local / VPS | Path to the JSON file, e.g. `./serviceAccount.json` |
+| `FIRESTORE_EMULATOR_HOST` | local only | `127.0.0.1:8080`, no credentials needed |
+
+Base64-encode the key in PowerShell:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("serviceAccount.json")) | Set-Clipboard
 ```
 
-The full schema is in [`database/schema.sql`](../database/schema.sql) and is safe to re-run.
+## 3. Seed sample data
 
 ```bash
 cd backend
-npm run db:setup   # schema only
-npm run db:seed    # schema + sample survey (skipped if any survey exists)
+npm run db:seed   # adds the sample bilingual survey from database/seed.json if no surveys exist
 ```
 
-Or with `psql`:
+Firestore creates collections on first write, so there is no schema to apply.
 
-```bash
-psql "$DATABASE_URL" -f database/schema.sql
-psql "$DATABASE_URL" -f database/seed.sql
-```
+## Collections
 
-## Tables
+### `surveys/{surveyId}`
 
-### `surveys`
-
-| Column | Type | Notes |
+| Field | Type | Notes |
 | --- | --- | --- |
-| `id` | SERIAL PK | |
-| `title` | JSONB | `{ "en": "...", "km": "..." }` |
-| `description` | JSONB | same shape, may be `{}` |
-| `is_active` | BOOLEAN | inactive surveys are hidden from the public API |
-| `created_at`, `updated_at` | TIMESTAMPTZ | `updated_at` maintained by trigger |
+| `title` | map | `{ en, km }` |
+| `description` | map | `{ en, km }`, may be empty |
+| `isActive` | boolean | inactive surveys are hidden from the public API |
+| `questionCount` | number | counter maintained by the backend |
+| `responseCount` | number | counter maintained by the backend |
+| `createdAt`, `updatedAt` | timestamp | server timestamps |
 
-### `questions`
+### `questions/{questionId}`
 
-| Column | Type | Notes |
+| Field | Type | Notes |
 | --- | --- | --- |
-| `id` | SERIAL PK | |
-| `survey_id` | INTEGER FK → surveys | `ON DELETE CASCADE` |
-| `text` | JSONB | localized question text |
-| `type` | VARCHAR(20) | `checkbox`, `radio` or `text` |
-| `options` | JSONB | `[{ "id": "opt_x", "label": { "en": "...", "km": "..." } }]`, `[]` for text |
-| `is_required` | BOOLEAN | |
-| `position` | INTEGER | display order within the survey |
+| `surveyId` | string | parent survey |
+| `text` | map | localized question text |
+| `type` | string | `checkbox`, `radio` or `text` |
+| `options` | array | `[{ id, label: { en, km } }]`, empty for text |
+| `isRequired` | boolean | |
+| `position` | number | display order within the survey |
 
-### `responses`
+### `responses/{responseId}`
 
-| Column | Type | Notes |
+| Field | Type | Notes |
 | --- | --- | --- |
-| `id` | SERIAL PK | |
-| `survey_id` | INTEGER FK → surveys | `ON DELETE CASCADE` |
-| `respondent_name` | VARCHAR(120) | optional |
-| `answers` | JSONB | `{ "<questionId>": "optId" \| ["optId", ...] \| "text" }` |
-| `created_at` | TIMESTAMPTZ | |
+| `surveyId` | string | |
+| `respondentName` | string \| null | optional |
+| `answers` | map | `{ "<questionId>": "optId" \| ["optId", ...] \| "text" }` |
+| `createdAt` | timestamp | |
 
-### `telegram_settings`
+Responses from surveys with **Require Google sign-in** also store `respondentUid`, `respondentEmail` and `resubmitAllowed`.
 
-Single row (`id = 1`) with `bot_token`, `chat_id`, `enabled`. If the row does not exist, the backend falls back to `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` from the environment.
+### `submissionLocks/{surveyId}_{googleUid}`
+
+One document per person per sign-in survey (`surveyId`, `responseId`). It is created in the same batch as the response with `create()`, which fails if it already exists, so a second answer from the same Google account is rejected atomically. **Allow again** (and deleting the response) removes the lock.
+
+### `settings/telegram`
+
+`botToken`, `chatId`, `enabled`. If the document does not exist, the backend falls back to `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` from the environment.
 
 ## Design notes
 
-- **Why JSONB for translations?** Each piece of content needs a value per language. A JSONB object keeps one row per survey/question and makes adding a language a code change rather than a migration.
-- **Why store option ids in answers?** Labels can be edited or translated later without breaking historical responses. Deleting an option leaves old answers pointing at an unknown id; reports ignore it and the response table shows the raw id.
-- **Reports** are computed in Node from the survey's responses. That is fine up to tens of thousands of responses per survey; beyond that, move the counting into SQL with `jsonb_array_elements_text`.
+- **No composite indexes required.** Queries use a single equality filter (`surveyId == x`) or a single-field order (`createdAt`), which Firestore indexes automatically. Sorting by date within a survey happens in Node.
+- **Counters** (`questionCount`, `responseCount`) are updated in the same batch as the write, so the survey list is one read per survey instead of a scan.
+- **Deleting a survey** also deletes its questions and responses (in batches of 400).
+- **Scale:** loading a survey's responses into memory for reports, CSV and pagination is fine up to tens of thousands of responses per survey. Beyond that, add a composite index on `responses (surveyId ASC, createdAt DESC)` and switch `Response.findBySurvey` to `orderBy` + cursor pagination.
+- **Free tier (Spark plan):** 50k reads / 20k writes / 20k deletes per day and 1 GiB storage, plenty for most surveys.
 
 ## Backups
 
+Firestore managed exports need the Blaze (pay-as-you-go) plan:
+
 ```bash
-pg_dump "$DATABASE_URL" --format=custom --file=survey-$(date +%F).dump
-pg_restore --clean --dbname "$DATABASE_URL" survey-2026-11-03.dump
+gcloud firestore export gs://<your-bucket>/backups/$(date +%F)
+```
+
+On the free plan, use **Admin → Reports → Export CSV** per survey.
+
+## Local emulator (optional)
+
+Requires Java 11+ and the Firebase CLI (`npm i -g firebase-tools`):
+
+```bash
+firebase emulators:start --only firestore --project demo-survey
+# in backend/.env: FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
 ```

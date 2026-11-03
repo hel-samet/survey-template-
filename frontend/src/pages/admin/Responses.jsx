@@ -109,9 +109,11 @@ export default function Responses() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((response) => (
+                {rows.map((response, index) => (
                   <tr key={response.id}>
-                    <td className="muted">{response.id}</td>
+                    <td className="muted" title={response.id}>
+                      {meta.total - (page - 1) * PAGE_SIZE - index}
+                    </td>
                     <td className="nowrap">{formatDateTime(response.createdAt, lang)}</td>
                     <td>
                       <div className="respondent">

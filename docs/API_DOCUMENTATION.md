@@ -8,6 +8,7 @@ Base URL: `http://localhost:4000/api` (local) or `https://<your-service>.onrende
 - Success: `{ "data": ... }` (lists with pagination also include `"meta"`).
 - Error: `{ "error": { "message": "...", "details": { ... } } }` with a 4xx/5xx status.
 - 🔒 = requires `Authorization: Bearer <token>` from `POST /auth/login`.
+- IDs are Firestore document IDs (strings, e.g. `"aB3xK9mQ2pL7"`). Examples below use short placeholders.
 - Translatable fields are objects: `{ "en": "Hello", "km": "សួស្តី" }`. On input, a plain string is accepted and treated as English.
 
 ## Health
@@ -40,7 +41,7 @@ Survey object:
 
 ```json
 {
-  "id": 1,
+  "id": "aB3xK9",
   "title": { "en": "Customer Satisfaction Survey", "km": "ការស្ទង់មតិពេញចិត្តរបស់អតិថិជន" },
   "description": { "en": "Help us improve." },
   "isActive": true,
@@ -65,14 +66,14 @@ Create / update body:
 | GET | `/questions?surveyId=1` | Questions of a survey, ordered |
 | POST | `/questions` | Create (appended to the end unless `position` is given) |
 | PUT | `/questions/:id` | Partial update |
-| PUT | `/questions/reorder` | Body `{ surveyId, ids: [3, 1, 2] }` |
+| PUT | `/questions/reorder` | Body `{ surveyId, ids: ["q3", "q1", "q2"] }` |
 | DELETE | `/questions/:id` | Delete |
 
 Question body:
 
 ```json
 {
-  "surveyId": 1,
+  "surveyId": "aB3xK9",
   "text": { "en": "Which services have you used?", "km": "..." },
   "type": "checkbox",
   "isRequired": true,
@@ -100,12 +101,12 @@ Submit body:
 
 ```json
 {
-  "surveyId": 1,
+  "surveyId": "aB3xK9",
   "respondentName": "Dara",
   "answers": {
-    "1": ["svc_delivery", "svc_online"],
-    "2": "sat_4",
-    "4": "Great service!"
+    "q1": ["svc_delivery", "svc_online"],
+    "q2": "sat_4",
+    "q4": "Great service!"
   }
 }
 ```
@@ -113,19 +114,19 @@ Submit body:
 Validation errors return 400 with `details` keyed by question id:
 
 ```json
-{ "error": { "message": "Some answers are missing or invalid", "details": { "2": "This question is required" } } }
+{ "error": { "message": "Some answers are missing or invalid", "details": { "q2": "This question is required" } } }
 ```
 
 Report shape:
 
 ```json
 {
-  "survey": { "id": 1, "title": { "en": "..." }, "isActive": true },
+  "survey": { "id": "aB3xK9", "title": { "en": "..." }, "isActive": true },
   "totalResponses": 12,
   "questions": [
-    { "id": 1, "type": "checkbox", "answeredCount": 12,
+    { "id": "q1", "type": "checkbox", "answeredCount": 12,
       "options": [{ "id": "svc_delivery", "label": { "en": "Delivery" }, "count": 7 }] },
-    { "id": 4, "type": "text", "answeredCount": 3,
+    { "id": "q4", "type": "text", "answeredCount": 3,
       "textAnswers": [{ "value": "Great service!", "createdAt": "..." }] }
   ]
 }
