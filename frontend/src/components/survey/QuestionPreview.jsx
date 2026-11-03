@@ -9,16 +9,23 @@ export default function QuestionPreview({ question }) {
 
   if (CHOICE_TYPES.includes(type)) {
     const box = type === 'checkbox' ? 'checkbox' : 'radio';
+    const correct = new Set(question.settings?.correct ?? []);
     return (
       <ul className={`option-preview ${type === 'yesno' ? 'option-preview--row' : ''}`}>
         {question.options.map((option) => (
-          <li key={option.id}>
+          <li key={option.id} className={correct.has(option.id) ? 'is-correct' : undefined}>
             {type === 'dropdown' ? (
               <Icon name="chevronDown" size={14} />
             ) : (
               <span className={`choice__box choice__box--${box}`} aria-hidden="true" />
             )}
             {tl(option.label)}
+            {correct.has(option.id) && (
+              <span className="correct-tag">
+                <Icon name="check" size={12} strokeWidth={3} />
+                {t('questions.correct')}
+              </span>
+            )}
           </li>
         ))}
       </ul>

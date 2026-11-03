@@ -1,5 +1,5 @@
 import { Survey } from '../models/Survey.js';
-import { getDashboardStats, getSurveyWithQuestions } from '../services/surveyService.js';
+import { getDashboardStats, getPublicSurvey as loadPublicSurvey, getSurveyWithQuestions } from '../services/surveyService.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { parseId } from '../utils/parseId.js';
@@ -14,7 +14,7 @@ export const listAllSurveys = asyncHandler(async (req, res) => {
 });
 
 export const getPublicSurvey = asyncHandler(async (req, res) => {
-  res.json({ data: await getSurveyWithQuestions(parseId(req.params.id), { activeOnly: true }) });
+  res.json({ data: await loadPublicSurvey(parseId(req.params.id)) });
 });
 
 export const getSurvey = asyncHandler(async (req, res) => {

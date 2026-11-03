@@ -5,6 +5,7 @@ import {
   buildReport,
   getSubmissionStatus,
   submitResponse as submit,
+  withScores,
 } from '../services/surveyService.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -15,7 +16,7 @@ const MAX_PAGE_SIZE = 100;
 export const submitResponse = asyncHandler(async (req, res) => {
   const surveyId = parseId(req.body?.surveyId, 'surveyId');
   const response = await submit(surveyId, req.body, respondentTokenFrom(req));
-  res.status(201).json({ data: { id: response.id, createdAt: response.createdAt } });
+  res.status(201).json({ data: { id: response.id, createdAt: response.createdAt, score: response.score } });
 });
 
 export const submissionStatus = asyncHandler(async (req, res) => {
@@ -40,7 +41,7 @@ export const listResponses = asyncHandler(async (req, res) => {
   ]);
 
   res.json({
-    data: rows,
+    data: await withScores(surveyId, rows),
     meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
   });
 });

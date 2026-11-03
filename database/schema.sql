@@ -95,3 +95,8 @@ ALTER TABLE responses ADD COLUMN IF NOT EXISTS resubmit_allowed BOOLEAN NOT NULL
 CREATE UNIQUE INDEX IF NOT EXISTS uq_responses_one_per_user
   ON responses (survey_id, respondent_uid)
   WHERE respondent_uid IS NOT NULL AND NOT resubmit_allowed;
+
+-- Quiz scoring -------------------------------------------------------------------
+-- Correct answers and points live in questions.settings ({"points": 2, "correct": ["optId"]}).
+-- surveys.show_score: show respondents their score right after they submit.
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS show_score BOOLEAN NOT NULL DEFAULT FALSE;

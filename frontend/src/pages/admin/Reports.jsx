@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Button from '../../components/common/Button.jsx';
 import { EmptyState, ErrorMessage, Loading } from '../../components/common/Feedback.jsx';
+import Icon from '../../components/common/Icon.jsx';
 import BarList from '../../components/dashboard/BarList.jsx';
 import PageHeader from '../../components/layout/PageHeader.jsx';
 import SurveyTabs from '../../components/layout/SurveyTabs.jsx';
@@ -33,7 +34,7 @@ export default function Reports() {
   if (loading) return <Loading />;
   if (error) return <ErrorMessage error={error} onRetry={reload} />;
 
-  const { survey, totalResponses, questions } = report;
+  const { survey, totalResponses, questions, scoring } = report;
 
   return (
     <>
@@ -56,6 +57,24 @@ export default function Reports() {
         <EmptyState message={t('reports.noData')} />
       ) : (
         <div className="stack">
+          {scoring && scoring.average !== null && (
+            <section className="card">
+              <h2 className="card__title">
+                <Icon name="award" size={18} /> {t('reports.scoreSummary')}
+              </h2>
+              <div className="report__stats report__stats--flush">
+                {['average', 'highest', 'lowest'].map((key) => (
+                  <div key={key} className="report__stat">
+                    <span className="report__stat-value">
+                      {scoring[key]}
+                      <span className="muted"> / {scoring.maxScore}</span>
+                    </span>
+                    <span className="report__stat-label">{t(`reports.score.${key}`)}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
           {questions.map((question, index) => (
             <section key={question.id} className="card">
               <div className="report__head">
@@ -80,11 +99,42 @@ function ReportBody({ question, totalResponses }) {
   const { t, tl, lang } = useLanguage();
 
   if (CHOICE_TYPES.includes(question.type)) {
+    const correct = new Set(question.settings?.correct ?? []);
+    const graded = question.correctCount !== undefined;
     return (
-      <BarList
-        total={totalResponses}
-        items={question.options.map((option) => ({ key: option.id, label: tl(option.label), value: option.count }))}
-      />
+      <>
+        {graded && (
+          <div className="report__stats">
+            <div className="report__stat report__stat--good">
+              <span className="report__stat-value">
+                {question.answeredCount ? Math.round((question.correctCount / question.answeredCount) * 100) : 0}%
+              </span>
+              <span className="report__stat-label">
+                {t('reports.correctRate', { count: question.correctCount, total: question.answeredCount })}
+              </span>
+            </div>
+          </div>
+        )}
+        <BarList
+          total={totalResponses}
+          items={question.options.map((option) => ({
+            key: option.id,
+            highlight: correct.has(option.id),
+            label: correct.has(option.id) ? (
+              <span className="correct-label">
+                {tl(option.label)}
+                <span className="correct-tag">
+                  <Icon name="check" size={12} strokeWidth={3} />
+                  {t('questions.correct')}
+                </span>
+              </span>
+            ) : (
+              tl(option.label)
+            ),
+            value: option.count,
+          }))}
+        />
+      </>
     );
   }
 

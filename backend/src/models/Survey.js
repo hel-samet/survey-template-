@@ -4,6 +4,7 @@ const SELECT = `
   SELECT s.id, s.title, s.description,
          s.is_active  AS "isActive",
          s.require_login AS "requireLogin",
+         s.show_score AS "showScore",
          s.created_at AS "createdAt",
          s.updated_at AS "updatedAt",
          (SELECT COUNT(*)::int FROM questions q WHERE q.survey_id = s.id) AS "questionCount",
@@ -22,25 +23,26 @@ export const Survey = {
     return rows[0] || null;
   },
 
-  async create({ title, description = {}, isActive = true, requireLogin = false }) {
+  async create({ title, description = {}, isActive = true, requireLogin = false, showScore = false }) {
     const { rows } = await query(
-      `INSERT INTO surveys (title, description, is_active, require_login)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO surveys (title, description, is_active, require_login, show_score)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING id`,
-      [toJson(title), toJson(description), isActive, requireLogin],
+      [toJson(title), toJson(description), isActive, requireLogin, showScore],
     );
     return Survey.findById(rows[0].id);
   },
 
-  async update(id, { title, description, isActive, requireLogin }) {
+  async update(id, { title, description, isActive, requireLogin, showScore }) {
     const { rowCount } = await query(
       `UPDATE surveys
           SET title         = COALESCE($2::jsonb, title),
               description   = COALESCE($3::jsonb, description),
               is_active     = COALESCE($4, is_active),
-              require_login = COALESCE($5, require_login)
+              require_login = COALESCE($5, require_login),
+              show_score    = COALESCE($6, show_score)
         WHERE id = $1`,
-      [id, toJson(title), toJson(description), isActive ?? null, requireLogin ?? null],
+      [id, toJson(title), toJson(description), isActive ?? null, requireLogin ?? null, showScore ?? null],
     );
     return rowCount ? Survey.findById(id) : null;
   },

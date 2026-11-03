@@ -15,6 +15,18 @@ export default function SuccessPage() {
         </div>
         <h1>{t('success.title')}</h1>
         <p className="muted">{t('success.message')}</p>
+        {state?.score && (
+          <div className="score-card">
+            <span className="score-card__label">{t('success.yourScore')}</span>
+            <span className="score-card__value">
+              {state.score.score}
+              <span className="score-card__max"> / {state.score.maxScore}</span>
+            </span>
+            <span className="score-card__percent">
+              {Math.round((state.score.score / state.score.maxScore) * 100)}%
+            </span>
+          </div>
+        )}
         {state?.title && <p className="result__survey">{t('success.surveyLabel', { title: tl(state.title) })}</p>}
         <Button to="/" icon="home">
           {t('success.another')}

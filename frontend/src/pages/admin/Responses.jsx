@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Button from '../../components/common/Button.jsx';
 import { EmptyState, ErrorMessage, Loading } from '../../components/common/Feedback.jsx';
+import Icon from '../../components/common/Icon.jsx';
 import PageHeader from '../../components/layout/PageHeader.jsx';
 import SurveyTabs from '../../components/layout/SurveyTabs.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
@@ -64,6 +65,7 @@ export default function Responses() {
   const survey = surveyState.data;
   const meta = responsesState.data?.meta;
   const rows = responsesState.data?.data ?? [];
+  const graded = rows.some((r) => r.scoring);
 
   return (
     <>
@@ -97,6 +99,7 @@ export default function Responses() {
                   <th>#</th>
                   <th>{t('responses.date')}</th>
                   <th>{t('responses.name')}</th>
+                  {graded && <th className="num">{t('responses.score')}</th>}
                   {survey.questions.map((question) => (
                     <th key={question.id} title={tl(question.text)} className="truncate">
                       {tl(question.text)}
@@ -119,9 +122,28 @@ export default function Responses() {
                         )}
                       </div>
                     </td>
-                    {survey.questions.map((question) => (
-                      <td key={question.id}>{formatAnswer(question, response.answers[question.id])}</td>
-                    ))}
+                    {graded && (
+                      <td className="num nowrap">
+                        {response.scoring && (
+                          <span className="score-pill">
+                            {response.scoring.score}/{response.scoring.maxScore}
+                          </span>
+                        )}
+                      </td>
+                    )}
+                    {survey.questions.map((question) => {
+                      const result = response.scoring?.results[question.id];
+                      return (
+                        <td key={question.id}>
+                          <span className={result === undefined ? undefined : result ? 'answer--right' : 'answer--wrong'}>
+                            {result !== undefined && (
+                              <Icon name={result ? 'check' : 'x'} size={13} strokeWidth={3} />
+                            )}
+                            {formatAnswer(question, response.answers[question.id])}
+                          </span>
+                        </td>
+                      );
+                    })}
                     <td>
                       <div className="row-actions nowrap">
                         {response.signedIn && !response.resubmitAllowed && (

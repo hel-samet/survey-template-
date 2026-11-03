@@ -6,6 +6,7 @@ import { CHOICE_TYPES, RANGE_TYPES, rangeOf } from '../validators/questionTypes.
 import { cleanRespondentName, validateAnswers } from '../validators/responseValidator.js';
 import { formatAnswer, notifyNewResponse } from './notificationService.js';
 import { verifyRespondentToken } from './respondentAuthService.js';
+import { isCorrect, isGraded, maxScoreOf, scoreAnswers, withoutAnswerKey } from './scoringService.js';
 
 const round = (n) => Math.round(n * 100) / 100;
 
@@ -16,6 +17,18 @@ export async function getSurveyWithQuestions(id, { activeOnly = false } = {}) {
   }
   const questions = await Question.findBySurvey(id);
   return { ...survey, questions };
+}
+
+// What respondents receive: no answer key, but the total available points.
+export async function getPublicSurvey(id) {
+  const survey = await getSurveyWithQuestions(id, { activeOnly: true });
+  return { ...survey, maxScore: maxScoreOf(survey.questions), questions: survey.questions.map(withoutAnswerKey) };
+}
+
+// Adds { score, maxScore, results } to each response of a survey (null when nothing is graded).
+export async function withScores(surveyId, responses) {
+  const questions = await Question.findBySurvey(surveyId);
+  return responses.map((response) => ({ ...response, scoring: scoreAnswers(questions, response.answers) }));
 }
 
 const alreadySubmitted = () =>
@@ -65,12 +78,16 @@ export async function submitResponse(surveyId, { answers, respondentName }, idTo
     throw err;
   }
 
+  const scoring = scoreAnswers(survey.questions, response.answers);
+
   // Fire-and-forget: a Telegram outage must never fail the respondent's submission.
-  notifyNewResponse(survey, response).catch((err) => {
+  notifyNewResponse(survey, { ...response, scoring }).catch((err) => {
     console.error('[telegram] Notification failed:', err.message);
   });
 
-  return response;
+  // Respondents only learn their total (never which answers were right) and only when allowed.
+  const score = survey.showScore && scoring ? { score: scoring.score, maxScore: scoring.maxScore } : null;
+  return { ...response, score };
 }
 
 export async function buildReport(surveyId) {
@@ -91,7 +108,14 @@ export async function buildReport(surveyId) {
           if (id in counts) counts[id] += 1;
         }
       }
-      return { ...base, options: question.options.map((option) => ({ ...option, count: counts[option.id] })) };
+      const graded = isGraded(question)
+        ? { correctCount: values.filter(({ value }) => isCorrect(question, value)).length }
+        : {};
+      return {
+        ...base,
+        ...graded,
+        options: question.options.map((option) => ({ ...option, count: counts[option.id] })),
+      };
     }
 
     const numbers = values.map(({ value }) => Number(value)).filter(Number.isFinite);
@@ -116,7 +140,21 @@ export async function buildReport(surveyId) {
   });
 
   const { questions: _omit, ...surveyInfo } = survey;
-  return { survey: surveyInfo, totalResponses: responses.length, questions };
+  return { survey: surveyInfo, totalResponses: responses.length, scoring: scoreSummary(survey.questions, responses), questions };
+}
+
+// Average / highest / lowest score across all responses, or null when nothing is graded.
+function scoreSummary(questions, responses) {
+  const maxScore = maxScoreOf(questions);
+  if (!maxScore) return null;
+  const scores = responses.map((r) => scoreAnswers(questions, r.answers).score);
+  if (!scores.length) return { maxScore, average: null, highest: null, lowest: null };
+  return {
+    maxScore,
+    average: round(scores.reduce((sum, s) => sum + s, 0) / scores.length),
+    highest: Math.max(...scores),
+    lowest: Math.min(...scores),
+  };
 }
 
 const csvCell = (value) => {
@@ -129,14 +167,26 @@ export async function buildCsv(surveyId, lang = 'en') {
   const responses = await Response.findAllBySurvey(surveyId);
   const pick = (localized) => localized?.[lang] || localized?.en || localized?.km || '';
 
-  const header = ['ID', 'Submitted At', 'Name', 'Email', ...survey.questions.map((q) => pick(q.text))];
-  const rows = responses.map((response) => [
-    response.id,
-    new Date(response.createdAt).toISOString(),
-    response.respondentName || '',
-    response.respondentEmail || '',
-    ...survey.questions.map((q) => formatAnswer(q, response.answers[q.id], lang).replace(/, /g, '; ')),
-  ]);
+  const graded = maxScoreOf(survey.questions) > 0;
+  const header = [
+    'ID',
+    'Submitted At',
+    'Name',
+    'Email',
+    ...(graded ? ['Score'] : []),
+    ...survey.questions.map((q) => pick(q.text)),
+  ];
+  const rows = responses.map((response) => {
+    const scoring = graded ? scoreAnswers(survey.questions, response.answers) : null;
+    return [
+      response.id,
+      new Date(response.createdAt).toISOString(),
+      response.respondentName || '',
+      response.respondentEmail || '',
+      ...(scoring ? [`${scoring.score}/${scoring.maxScore}`] : []),
+      ...survey.questions.map((q) => formatAnswer(q, response.answers[q.id], lang).replace(/, /g, '; ')),
+    ];
+  });
 
   // The BOM lets Excel detect UTF-8 so Khmer text displays correctly.
   return '﻿' + [header, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');

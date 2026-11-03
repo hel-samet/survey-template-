@@ -35,6 +35,10 @@ export function formatResponseMessage(survey, response) {
     lines.push(`👤 ${escapeHtml(response.respondentName)}${email}`, '');
   }
 
+  if (response.scoring) {
+    lines.push(`🏆 Score: <b>${response.scoring.score}/${response.scoring.maxScore}</b>`, '');
+  }
+
   for (const question of survey.questions) {
     const answer = formatAnswer(question, response.answers[question.id]);
     if (!answer) continue;

@@ -11,7 +11,15 @@ import { useLanguage } from '../../hooks/useLanguage.js';
 import { isGoogleSignInConfigured } from '../../services/googleAuth.js';
 import { surveyApi } from '../../services/surveyService.js';
 
-const EMPTY_FORM = { titleEn: '', titleKm: '', descEn: '', descKm: '', isActive: true, requireLogin: false };
+const EMPTY_FORM = {
+  titleEn: '',
+  titleKm: '',
+  descEn: '',
+  descKm: '',
+  isActive: true,
+  requireLogin: false,
+  showScore: false,
+};
 
 export default function SurveyBuilder() {
   const { id } = useParams();
@@ -34,6 +42,7 @@ export default function SurveyBuilder() {
       descKm: loaded.description.km || '',
       isActive: loaded.isActive,
       requireLogin: loaded.requireLogin,
+      showScore: loaded.showScore,
     });
     return loaded;
   }, [id]);
@@ -55,6 +64,7 @@ export default function SurveyBuilder() {
       description: { en: form.descEn, km: form.descKm },
       isActive: form.isActive,
       requireLogin: form.requireLogin,
+      showScore: form.showScore,
     };
 
     setSaving(true);
@@ -130,6 +140,13 @@ export default function SurveyBuilder() {
         {form.requireLogin && !isGoogleSignInConfigured && (
           <p className="alert alert--error">{t('builder.requireLoginNotConfigured')}</p>
         )}
+
+        <Checkbox
+          label={t('builder.showScore')}
+          description={t('builder.showScoreHint')}
+          checked={form.showScore}
+          onChange={(checked) => setForm((prev) => ({ ...prev, showScore: checked }))}
+        />
 
         {error && (
           <p className="alert alert--error" role="alert">

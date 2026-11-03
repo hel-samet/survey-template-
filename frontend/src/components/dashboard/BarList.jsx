@@ -8,7 +8,7 @@ export default function BarList({ items, total }) {
       {items.map((item) => {
         const share = total ? item.value / total : item.value / max;
         return (
-          <li key={item.key} className="bar-list__item">
+          <li key={item.key} className={`bar-list__item ${item.highlight ? 'bar-list__item--highlight' : ''}`}>
             <div className="bar-list__row">
               <span className="bar-list__label">{item.label}</span>
               <span className="bar-list__value">

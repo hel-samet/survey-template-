@@ -121,6 +121,9 @@ export default function SurveyQuestion({ question, index, value, onChange, error
             </span>
           )}
         </span>
+        {question.settings?.points > 0 && (
+          <span className="question__points">{t('questions.pointsValue', { count: question.settings.points })}</span>
+        )}
       </legend>
       {hint && <p className="question__hint">{hint}</p>}
 

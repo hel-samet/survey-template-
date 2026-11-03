@@ -165,13 +165,13 @@ export default function SurveyPage() {
     setSubmitError('');
     try {
       const payload = Object.fromEntries(Object.entries(answers).filter(([, value]) => hasValue(value)));
-      await responseApi.submit({
+      const result = await responseApi.submit({
         surveyId: survey.id,
         answers: payload,
         respondentName: respondentName.trim(),
         respondentToken: needsLogin ? await googleAuth.getIdToken() : undefined,
       });
-      navigate('/success', { replace: true, state: { title: survey.title } });
+      navigate('/success', { replace: true, state: { title: survey.title, score: result.score } });
     } catch (err) {
       if (err.status === 409) {
         setStatus({ loading: false, submitted: true });

@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { ApiError } from '../utils/ApiError.js';
-import { OPTION_TYPES, QUESTION_TYPES, YES_NO_OPTIONS } from './questionTypes.js';
+import { CHOICE_TYPES, OPTION_TYPES, QUESTION_TYPES, YES_NO_OPTIONS } from './questionTypes.js';
 
 export const LANGUAGES = ['en', 'km'];
 export { QUESTION_TYPES };
@@ -40,7 +40,9 @@ function validateOptions(options) {
     let id = typeof option?.id === 'string' && /^[\w-]{1,40}$/.test(option.id) ? option.id : randomOptionId();
     while (seen.has(id)) id = randomOptionId();
     seen.add(id);
-    return { id, label };
+    // `correct` marks the answer key; it is moved into settings.correct by normalizeQuestion,
+    // because brand-new options only get their IDs here.
+    return option?.correct === undefined ? { id, label } : { id, label, correct: Boolean(option.correct) };
   });
 }
 
@@ -57,6 +59,9 @@ export function validateSurvey(body = {}, { partial = false } = {}) {
   }
   if (body.requireLogin !== undefined) {
     data.requireLogin = Boolean(body.requireLogin);
+  }
+  if (body.showScore !== undefined) {
+    data.showScore = Boolean(body.showScore);
   }
   return data;
 }
@@ -95,7 +100,28 @@ const intIn = (value, min, max, fallback) => {
   return Number.isInteger(n) && n >= min && n <= max ? n : fallback;
 };
 
-function normalizeSettings(type, settings = {}) {
+const MAX_POINTS = 1000;
+
+const cleanPoints = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.min(MAX_POINTS, Math.round(n * 100) / 100) : 0;
+};
+
+// Answer key for choice questions: the option IDs that are correct, plus the points they earn.
+function scoringSettings(type, settings, options) {
+  const ids = new Set(options.map((o) => o.id));
+  const flagged = options.some((o) => o.correct !== undefined);
+  let correct = flagged
+    ? options.filter((o) => o.correct).map((o) => o.id)
+    : (Array.isArray(settings.correct) ? settings.correct : []).map(String).filter((id) => ids.has(id));
+  if (type !== 'checkbox') correct = correct.slice(0, 1);
+  return { points: cleanPoints(settings.points), correct: [...new Set(correct)] };
+}
+
+function normalizeSettings(type, settings = {}, options = []) {
+  if (CHOICE_TYPES.includes(type)) {
+    return scoringSettings(type, settings, options);
+  }
   if (type === 'rating') {
     return { max: intIn(settings.max, 3, 10, 5) };
   }
@@ -119,8 +145,9 @@ export function normalizeQuestion(type, { options = [], settings = {} } = {}) {
     throw new ApiError(400, 'Checkbox, multiple choice and dropdown questions need at least 2 options');
   }
 
+  const finalOptions = OPTION_TYPES.includes(type) ? options : type === 'yesno' ? YES_NO_OPTIONS : [];
   return {
-    options: OPTION_TYPES.includes(type) ? options : type === 'yesno' ? YES_NO_OPTIONS : [],
-    settings: normalizeSettings(type, settings),
+    options: finalOptions.map(({ id, label }) => ({ id, label })),
+    settings: normalizeSettings(type, settings, finalOptions),
   };
 }

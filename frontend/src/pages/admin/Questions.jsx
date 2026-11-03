@@ -12,22 +12,29 @@ import ScaleInput from '../../components/survey/ScaleInput.jsx';
 import TypePicker from '../../components/survey/TypePicker.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { useLanguage } from '../../hooks/useLanguage.js';
-import { DEFAULT_SETTINGS, OPTION_TYPES, range, TYPE_ICONS } from '../../questionTypes.js';
+import { CHOICE_TYPES, DEFAULT_SETTINGS, OPTION_TYPES, range, TYPE_ICONS } from '../../questionTypes.js';
 import { questionApi, surveyApi } from '../../services/surveyService.js';
 
 let draftKey = 0;
-const blankOption = () => ({ key: `new-${++draftKey}`, id: undefined, en: '', km: '' });
+const blankOption = () => ({ key: `new-${++draftKey}`, id: undefined, en: '', km: '', correct: false });
 
 function toDraft(question) {
   const type = question?.type || 'checkbox';
   const hasCustomOptions = question && OPTION_TYPES.includes(type) && question.options.length;
+  const correct = new Set(question?.settings?.correct ?? []);
   return {
     textEn: question?.text.en || '',
     textKm: question?.text.km || '',
     type,
     isRequired: question?.isRequired ?? false,
     options: hasCustomOptions
-      ? question.options.map((o) => ({ key: o.id, id: o.id, en: o.label.en || '', km: o.label.km || '' }))
+      ? question.options.map((o) => ({
+          key: o.id,
+          id: o.id,
+          en: o.label.en || '',
+          km: o.label.km || '',
+          correct: correct.has(o.id),
+        }))
       : [blankOption(), blankOption()],
     settings: { ...DEFAULT_SETTINGS[type], ...question?.settings },
   };
@@ -157,6 +164,14 @@ function QuestionItem({ question, index, isFirst, isLast, onMove, onDelete, onSa
               {t(`questions.types.${question.type}`)}
             </span>
             {question.isRequired && <span className="badge badge--warning">{t('common.required')}</span>}
+            {question.settings?.points > 0 && (
+              <span className={`badge ${question.settings.correct?.length ? 'badge--points' : 'badge--error'}`}>
+                <Icon name="award" size={13} />
+                {question.settings.correct?.length
+                  ? t('questions.pointsValue', { count: question.settings.points })
+                  : t('questions.noCorrectWarning')}
+              </span>
+            )}
           </div>
         </div>
         <div className="row-actions">
@@ -212,7 +227,21 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
   const setLabel = (key, lang, text) => setSettings({ [key]: { ...draft.settings[key], [lang]: text } });
   const setOption = (key, patch) =>
     set({ options: draft.options.map((o) => (o.key === key ? { ...o, ...patch } : o)) });
-  const changeType = (type) => set({ type, settings: { ...DEFAULT_SETTINGS[type], ...draft.settings } });
+  const changeType = (type) => {
+    // Single-answer types keep at most one correct option.
+    const options =
+      type === 'checkbox'
+        ? draft.options
+        : draft.options.map((o, i, all) => ({ ...o, correct: o.correct && all.findIndex((x) => x.correct) === i }));
+    set({ type, options, settings: { ...DEFAULT_SETTINGS[type], ...draft.settings } });
+  };
+  const toggleCorrect = (key) =>
+    set({
+      options: draft.options.map((o) =>
+        o.key === key ? { ...o, correct: !o.correct } : draft.type === 'checkbox' ? o : { ...o, correct: false },
+      ),
+    });
+  const isScorable = CHOICE_TYPES.includes(draft.type);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -225,7 +254,7 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
       text: { en: draft.textEn, km: draft.textKm },
       type: draft.type,
       isRequired: draft.isRequired,
-      options: hasOptions ? options.map((o) => ({ id: o.id, label: { en: o.en, km: o.km } })) : [],
+      options: hasOptions ? options.map((o) => ({ id: o.id, label: { en: o.en, km: o.km }, correct: o.correct })) : [],
       settings: draft.settings,
     };
 
@@ -276,6 +305,56 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
       />
 
       {draft.type === 'yesno' && <p className="note">{t('questions.yesnoNote')}</p>}
+
+      {isScorable && (
+        <div className="scoring-editor">
+          <label className="field scoring-editor__points">
+            <span className="field__label">
+              <Icon name="award" size={15} /> {t('questions.points')}
+            </span>
+            <input
+              type="number"
+              className="field__control"
+              min={0}
+              max={1000}
+              step="0.5"
+              value={draft.settings.points ?? 0}
+              onChange={(e) => setSettings({ points: Number(e.target.value) })}
+            />
+          </label>
+          {draft.type === 'yesno' ? (
+            <div className="field">
+              <span className="field__label">{t('questions.correctAnswer')}</span>
+              <div className="segmented" role="radiogroup">
+                {[
+                  { id: null, label: t('questions.noCorrect') },
+                  { id: 'yes', label: t('survey.yes') },
+                  { id: 'no', label: t('survey.no') },
+                ].map((choice) => {
+                  const active = (draft.settings.correct?.[0] ?? null) === choice.id;
+                  return (
+                    <button
+                      key={choice.label}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      className={`segmented__btn ${active ? 'is-active' : ''}`}
+                      onClick={() => setSettings({ correct: choice.id ? [choice.id] : [] })}
+                    >
+                      {choice.id && <Icon name="check" size={14} strokeWidth={2.6} />}
+                      {choice.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <p className="scoring-editor__hint">
+              {t(draft.type === 'checkbox' ? 'questions.markCorrectMany' : 'questions.markCorrectOne')}
+            </p>
+          )}
+        </div>
+      )}
 
       {draft.type === 'rating' && (
         <div className="options-editor options-editor--inline">
@@ -361,7 +440,7 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
         <fieldset className="options-editor">
           <legend className="field__label">{t('questions.options')}</legend>
           {draft.options.map((option, index) => (
-            <div key={option.key} className="options-editor__row">
+            <div key={option.key} className={`options-editor__row ${option.correct ? 'is-correct' : ''}`}>
               {draft.type === 'dropdown' ? (
                 <span className="options-editor__index">{index + 1}.</span>
               ) : (
@@ -384,6 +463,16 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
                 maxLength={300}
                 onChange={(e) => setOption(option.key, { km: e.target.value })}
               />
+              <button
+                type="button"
+                className={`correct-toggle ${option.correct ? 'is-on' : ''}`}
+                aria-pressed={option.correct}
+                title={t(option.correct ? 'questions.correctMarked' : 'questions.markCorrect')}
+                aria-label={t(option.correct ? 'questions.correctMarked' : 'questions.markCorrect')}
+                onClick={() => toggleCorrect(option.key)}
+              >
+                <Icon name="check" size={15} strokeWidth={2.6} />
+              </button>
               <Button
                 size="sm"
                 variant="ghost"
