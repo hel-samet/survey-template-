@@ -1,0 +1,39 @@
+# Render Blueprint: backend API + PostgreSQL.
+# Render dashboard → New → Blueprint → select this repository.
+databases:
+  - name: survey-db
+    plan: free
+    databaseName: survey_db
+    user: survey
+
+services:
+  - type: web
+    name: survey-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    # db:setup is idempotent, so applying the schema on every start is safe.
+    startCommand: npm run db:setup && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: survey-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: 'false'
+      - key: CORS_ORIGIN
+        value: https://hel-samet.github.io
+      - key: TIMEZONE
+        value: Asia/Phnom_Penh
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 12h
