@@ -123,7 +123,7 @@ export default function SurveyPage() {
   if (needsLogin && status.submitted) {
     return (
       <div className="container">
-        <AlreadySubmitted user={user} onSwitch={() => signIn({ switchAccount: true })} />
+        <AlreadySubmitted user={user} />
       </div>
     );
   }

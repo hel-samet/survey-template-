@@ -52,7 +52,7 @@ export function AccountBar({ user, onSwitch }) {
   );
 }
 
-export function AlreadySubmitted({ user, onSwitch }) {
+export function AlreadySubmitted({ user }) {
   const { t } = useLanguage();
   return (
     <div className="card result">
@@ -62,14 +62,9 @@ export function AlreadySubmitted({ user, onSwitch }) {
       <h1>{t('signin.alreadyTitle')}</h1>
       <p className="muted">{t('signin.alreadyMessage')}</p>
       <p className="result__survey">{user.email}</p>
-      <div className="row-actions">
-        <Button to="/" icon="home">
-          {t('success.another')}
-        </Button>
-        <Button variant="secondary" onClick={onSwitch}>
-          {t('signin.switch')}
-        </Button>
-      </div>
+      <Button to="/" icon="home">
+        {t('success.another')}
+      </Button>
     </div>
   );
 }
