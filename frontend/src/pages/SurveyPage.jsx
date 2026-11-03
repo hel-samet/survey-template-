@@ -11,7 +11,10 @@ import { useLanguage } from '../hooks/useLanguage.js';
 import { formatError } from '../questionTypes.js';
 import { responseApi, surveyApi } from '../services/surveyService.js';
 
-const hasValue = (value) => (Array.isArray(value) ? value.length > 0 : Boolean(String(value ?? '').trim()));
+// Key for the respondent-name field in `errors`; matches the API's error detail key.
+const NAME_KEY = 'respondentName';
+
+const hasValue =(value) => (Array.isArray(value) ? value.length > 0 : Boolean(String(value ?? '').trim()));
 
 export default function SurveyPage() {
   const { id } = useParams();
@@ -63,6 +66,7 @@ export default function SurveyPage() {
     event.preventDefault();
 
     const problems = {};
+    if (!respondentName.trim()) problems[NAME_KEY] = t('survey.errors.nameRequired');
     for (const question of questions) {
       const value = answers[question.id];
       if (question.isRequired && !hasValue(value)) {
@@ -76,8 +80,8 @@ export default function SurveyPage() {
     if (Object.keys(problems).length) {
       setErrors(problems);
       setSubmitError(t('survey.errors.summary'));
-      const first = questions.find((q) => problems[q.id]);
-      document.getElementById(`q-${first.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const first = problems[NAME_KEY] ? NAME_KEY : `q-${questions.find((q) => problems[q.id]).id}`;
+      document.getElementById(first)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -88,17 +92,20 @@ export default function SurveyPage() {
       await responseApi.submit({
         surveyId: survey.id,
         answers: payload,
-        respondentName: respondentName.trim() || undefined,
+        respondentName: respondentName.trim(),
       });
       navigate('/success', { replace: true, state: { title: survey.title } });
     } catch (err) {
       if (err.details && typeof err.details === 'object') {
         setErrors(
           Object.fromEntries(
-            Object.entries(err.details).map(([qid, message]) => [
-              qid,
-              message === 'This question is required' ? t('survey.errors.required') : t('survey.errors.invalid'),
-            ]),
+            Object.entries(err.details).map(([key, message]) => {
+              if (key === NAME_KEY) return [key, t('survey.errors.nameRequired')];
+              return [
+                key,
+                message === 'This question is required' ? t('survey.errors.required') : t('survey.errors.invalid'),
+              ];
+            }),
           ),
         );
       }
@@ -121,6 +128,30 @@ export default function SurveyPage() {
         <EmptyState message={t('survey.noQuestions')} />
       ) : (
         <>
+          <div id={NAME_KEY} className={`card question ${errors[NAME_KEY] ? 'question--error' : ''}`}>
+            <Input
+              label={
+                <>
+                  {t('survey.nameLabel')}
+                  <span className="required" title={t('common.required')}>
+                    {' '}
+                    *
+                  </span>
+                </>
+              }
+              placeholder={t('survey.namePlaceholder')}
+              value={respondentName}
+              maxLength={120}
+              autoComplete="name"
+              required
+              error={errors[NAME_KEY]}
+              onChange={(event) => {
+                setRespondentName(event.target.value);
+                if (errors[NAME_KEY]) setErrors(({ [NAME_KEY]: _removed, ...rest }) => rest);
+              }}
+            />
+          </div>
+
           {questions.map((question, index) => (
             <SurveyQuestion
               key={question.id}
@@ -132,17 +163,6 @@ export default function SurveyPage() {
               onChange={(value) => setAnswer(question.id, value)}
             />
           ))}
-
-          <div className="card question">
-            <Input
-              label={`${t('survey.nameLabel')} (${t('common.optional')})`}
-              placeholder={t('survey.namePlaceholder')}
-              value={respondentName}
-              maxLength={120}
-              autoComplete="name"
-              onChange={(event) => setRespondentName(event.target.value)}
-            />
-          </div>
 
           <SurveySubmit submitting={submitting} error={submitError} />
         </>

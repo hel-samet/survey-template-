@@ -23,9 +23,14 @@ export async function submitResponse(surveyId, { answers, respondentName }) {
     throw new ApiError(400, 'This survey has no questions yet');
   }
 
+  const name = cleanRespondentName(respondentName);
+  if (!name) {
+    throw new ApiError(400, 'Please enter your name', { respondentName: 'This field is required' });
+  }
+
   const response = await Response.create({
     surveyId,
-    respondentName: cleanRespondentName(respondentName),
+    respondentName: name,
     answers: validateAnswers(survey.questions, answers),
   });
 
