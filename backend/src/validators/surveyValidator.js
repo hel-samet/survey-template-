@@ -55,6 +55,9 @@ export function validateSurvey(body = {}, { partial = false } = {}) {
   if (body.isActive !== undefined) {
     data.isActive = Boolean(body.isActive);
   }
+  if (body.requireLogin !== undefined) {
+    data.requireLogin = Boolean(body.requireLogin);
+  }
   return data;
 }
 

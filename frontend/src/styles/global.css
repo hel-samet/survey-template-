@@ -2342,3 +2342,122 @@ select.field__control {
     grid-template-columns: repeat(min(var(--points), 6), minmax(0, 1fr));
   }
 }
+
+/* ==========================================================================
+   Google sign-in (one answer per person)
+   ========================================================================== */
+.signin-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 2.25rem 1.5rem;
+  text-align: center;
+}
+
+.signin-card .muted {
+  max-width: 420px;
+  margin: 0;
+}
+
+.signin-card__icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.signin-card__title {
+  margin: 0.25rem 0 0;
+  font-size: 1.3rem;
+}
+
+.signin-card__note {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-faint);
+}
+
+.signin-card .alert {
+  margin: 0;
+}
+
+.google-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-width: 260px;
+  margin-top: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.google-btn:hover:not(:disabled) {
+  background: var(--surface-muted);
+  box-shadow: var(--shadow);
+}
+
+.google-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.account-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 0.9rem;
+}
+
+.account-bar__text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+}
+
+.account-bar__text strong {
+  color: var(--text);
+}
+
+.account-bar__switch {
+  border: none;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account-bar__switch:hover {
+  text-decoration: underline;
+}
+
+.respondent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+}
+
+.badge--inline {
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}

@@ -31,7 +31,8 @@ export function formatResponseMessage(survey, response) {
   const lines = [`📝 <b>New response</b> — ${escapeHtml(label(survey.title))}`, ''];
 
   if (response.respondentName) {
-    lines.push(`👤 ${escapeHtml(response.respondentName)}`, '');
+    const email = response.respondentEmail ? ` (${escapeHtml(response.respondentEmail)})` : '';
+    lines.push(`👤 ${escapeHtml(response.respondentName)}${email}`, '');
   }
 
   for (const question of survey.questions) {

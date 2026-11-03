@@ -5,6 +5,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { CHOICE_TYPES, RANGE_TYPES, rangeOf } from '../validators/questionTypes.js';
 import { cleanRespondentName, validateAnswers } from '../validators/responseValidator.js';
 import { formatAnswer, notifyNewResponse } from './notificationService.js';
+import { verifyRespondentToken } from './respondentAuthService.js';
 
 const round = (n) => Math.round(n * 100) / 100;
 
@@ -17,22 +18,52 @@ export async function getSurveyWithQuestions(id, { activeOnly = false } = {}) {
   return { ...survey, questions };
 }
 
-export async function submitResponse(surveyId, { answers, respondentName }) {
+const alreadySubmitted = () =>
+  new ApiError(409, 'You have already submitted this survey', { auth: 'already_submitted' });
+
+// For surveys that require sign-in: has this Google account already answered?
+export async function getSubmissionStatus(surveyId, idToken) {
+  const survey = await Survey.findById(surveyId);
+  if (!survey || !survey.isActive) throw new ApiError(404, 'Survey not found');
+  if (!survey.requireLogin) return { requireLogin: false, submitted: false };
+
+  const respondent = await verifyRespondentToken(idToken);
+  const blocking = await Response.findBlocking(surveyId, respondent.uid);
+  return { requireLogin: true, submitted: Boolean(blocking), email: respondent.email };
+}
+
+export async function submitResponse(surveyId, { answers, respondentName }, idToken) {
   const survey = await getSurveyWithQuestions(surveyId, { activeOnly: true });
   if (!survey.questions.length) {
     throw new ApiError(400, 'This survey has no questions yet');
   }
 
-  const name = cleanRespondentName(respondentName);
+  // Sign-in surveys: one counting response per Google account until an admin allows another.
+  let respondent = null;
+  if (survey.requireLogin) {
+    respondent = await verifyRespondentToken(idToken);
+    if (await Response.findBlocking(surveyId, respondent.uid)) throw alreadySubmitted();
+  }
+
+  const name = cleanRespondentName(respondentName) || cleanRespondentName(respondent?.name);
   if (!name) {
     throw new ApiError(400, 'Please enter your name', { respondentName: 'This field is required' });
   }
 
-  const response = await Response.create({
-    surveyId,
-    respondentName: name,
-    answers: validateAnswers(survey.questions, answers),
-  });
+  let response;
+  try {
+    response = await Response.create({
+      surveyId,
+      respondentName: name,
+      respondentUid: respondent?.uid ?? null,
+      respondentEmail: respondent?.email ?? null,
+      answers: validateAnswers(survey.questions, answers),
+    });
+  } catch (err) {
+    // Two tabs submitting at once: the unique index lets only the first one through.
+    if (err.alreadySubmitted) throw alreadySubmitted();
+    throw err;
+  }
 
   // Fire-and-forget: a Telegram outage must never fail the respondent's submission.
   notifyNewResponse(survey, response).catch((err) => {
@@ -98,11 +129,12 @@ export async function buildCsv(surveyId, lang = 'en') {
   const responses = await Response.findAllBySurvey(surveyId);
   const pick = (localized) => localized?.[lang] || localized?.en || localized?.km || '';
 
-  const header = ['ID', 'Submitted At', 'Name', ...survey.questions.map((q) => pick(q.text))];
+  const header = ['ID', 'Submitted At', 'Name', 'Email', ...survey.questions.map((q) => pick(q.text))];
   const rows = responses.map((response) => [
     response.id,
     new Date(response.createdAt).toISOString(),
     response.respondentName || '',
+    response.respondentEmail || '',
     ...survey.questions.map((q) => formatAnswer(q, response.answers[q.id], lang).replace(/, /g, '; ')),
   ]);
 

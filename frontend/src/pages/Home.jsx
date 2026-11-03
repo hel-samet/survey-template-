@@ -50,6 +50,12 @@ export default function Home() {
                     <Icon name="clock" size={15} />
                     {t('home.minutes', { count: estimateMinutes(survey.questionCount) })}
                   </span>
+                  {survey.requireLogin && (
+                    <span>
+                      <Icon name="lock" size={15} />
+                      {t('home.signInRequired')}
+                    </span>
+                  )}
                 </div>
                 <span className="survey-card__cta">
                   {t('home.start')}

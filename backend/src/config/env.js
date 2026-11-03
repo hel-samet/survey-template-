@@ -27,6 +27,10 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '12h',
 
+  // Firebase project used for respondent Google sign-in. Only the project ID is needed to
+  // verify ID tokens; leave empty to disable surveys that require sign-in.
+  firebaseProjectId: process.env.FIREBASE_PROJECT_ID || '',
+
   telegram: {
     botToken: process.env.TELEGRAM_BOT_TOKEN || '',
     chatId: process.env.TELEGRAM_CHAT_ID || '',

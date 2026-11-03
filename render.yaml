@@ -33,6 +33,9 @@ services:
         value: admin
       - key: ADMIN_PASSWORD
         sync: false
+      # Firebase project ID for respondent Google sign-in (Firebase console → Project settings)
+      - key: FIREBASE_PROJECT_ID
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN

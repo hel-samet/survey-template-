@@ -80,3 +80,18 @@ CREATE TABLE IF NOT EXISTS telegram_settings (
 DROP TRIGGER IF EXISTS telegram_settings_updated_at ON telegram_settings;
 CREATE TRIGGER telegram_settings_updated_at BEFORE UPDATE ON telegram_settings
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Google sign-in (one response per person) ------------------------------------
+-- surveys.require_login: respondents must sign in with Google and may answer once.
+-- responses.respondent_uid: Firebase Auth user ID of the signed-in respondent.
+-- responses.resubmit_allowed: set by an admin to let that person answer again.
+ALTER TABLE surveys   ADD COLUMN IF NOT EXISTS require_login    BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE responses ADD COLUMN IF NOT EXISTS respondent_uid   TEXT;
+ALTER TABLE responses ADD COLUMN IF NOT EXISTS respondent_email TEXT;
+ALTER TABLE responses ADD COLUMN IF NOT EXISTS resubmit_allowed BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- At most one "counting" response per person per survey. Allowing a resubmit takes the
+-- old row out of this index, so the database itself blocks double submissions.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_responses_one_per_user
+  ON responses (survey_id, respondent_uid)
+  WHERE respondent_uid IS NOT NULL AND NOT resubmit_allowed;

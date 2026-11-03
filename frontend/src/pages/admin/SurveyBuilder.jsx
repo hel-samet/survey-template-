@@ -8,9 +8,10 @@ import PageHeader from '../../components/layout/PageHeader.jsx';
 import SurveyTabs from '../../components/layout/SurveyTabs.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { useLanguage } from '../../hooks/useLanguage.js';
+import { isGoogleSignInConfigured } from '../../services/googleAuth.js';
 import { surveyApi } from '../../services/surveyService.js';
 
-const EMPTY_FORM = { titleEn: '', titleKm: '', descEn: '', descKm: '', isActive: true };
+const EMPTY_FORM = { titleEn: '', titleKm: '', descEn: '', descKm: '', isActive: true, requireLogin: false };
 
 export default function SurveyBuilder() {
   const { id } = useParams();
@@ -32,6 +33,7 @@ export default function SurveyBuilder() {
       descEn: loaded.description.en || '',
       descKm: loaded.description.km || '',
       isActive: loaded.isActive,
+      requireLogin: loaded.requireLogin,
     });
     return loaded;
   }, [id]);
@@ -52,6 +54,7 @@ export default function SurveyBuilder() {
       title: { en: form.titleEn, km: form.titleKm },
       description: { en: form.descEn, km: form.descKm },
       isActive: form.isActive,
+      requireLogin: form.requireLogin,
     };
 
     setSaving(true);
@@ -117,6 +120,16 @@ export default function SurveyBuilder() {
           checked={form.isActive}
           onChange={(checked) => setForm((prev) => ({ ...prev, isActive: checked }))}
         />
+
+        <Checkbox
+          label={t('builder.requireLogin')}
+          description={t('builder.requireLoginHint')}
+          checked={form.requireLogin}
+          onChange={(checked) => setForm((prev) => ({ ...prev, requireLogin: checked }))}
+        />
+        {form.requireLogin && !isGoogleSignInConfigured && (
+          <p className="alert alert--error">{t('builder.requireLoginNotConfigured')}</p>
+        )}
 
         {error && (
           <p className="alert alert--error" role="alert">

@@ -1,20 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/common/Button.jsx';
 import { EmptyState, ErrorMessage, Loading } from '../components/common/Feedback.jsx';
 import Input from '../components/common/Input.jsx';
+import { AccountBar, AlreadySubmitted, SignInCard } from '../components/survey/GoogleSignIn.jsx';
 import SurveyHeader from '../components/survey/SurveyHeader.jsx';
 import SurveyQuestion from '../components/survey/SurveyQuestion.jsx';
 import SurveySubmit from '../components/survey/SurveySubmit.jsx';
 import { useAsync } from '../hooks/useAsync.js';
 import { useLanguage } from '../hooks/useLanguage.js';
 import { formatError } from '../questionTypes.js';
+import { googleAuth, isGoogleSignInConfigured } from '../services/googleAuth.js';
 import { responseApi, surveyApi } from '../services/surveyService.js';
 
 // Key for the respondent-name field in `errors`; matches the API's error detail key.
 const NAME_KEY = 'respondentName';
 
-const hasValue =(value) => (Array.isArray(value) ? value.length > 0 : Boolean(String(value ?? '').trim()));
+// Firebase popup errors that just mean the respondent closed the window.
+const DISMISSED_POPUP = ['auth/popup-closed-by-user', 'auth/cancelled-popup-request'];
+
+const hasValue = (value) => (Array.isArray(value) ? value.length > 0 : Boolean(String(value ?? '').trim()));
+
+// Signed-in Google user for sign-in surveys: undefined while checking, null when signed out.
+function useRespondent(enabled) {
+  const [user, setUser] = useState(undefined);
+  useEffect(() => (enabled ? googleAuth.onChange(setUser) : undefined), [enabled]);
+  return user;
+}
 
 export default function SurveyPage() {
   const { id } = useParams();
@@ -22,11 +34,51 @@ export default function SurveyPage() {
   const { t, tl } = useLanguage();
   const { data: survey, loading, error, reload } = useAsync(() => surveyApi.getPublic(id), [id]);
 
+  const needsLogin = Boolean(survey?.requireLogin);
+  const user = useRespondent(needsLogin && isGoogleSignInConfigured);
+  const [status, setStatus] = useState({ loading: false, submitted: false });
+  const [signingIn, setSigningIn] = useState(false);
+  const [signInError, setSignInError] = useState('');
+
   const [answers, setAnswers] = useState({});
   const [respondentName, setRespondentName] = useState('');
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Once signed in, ask the server whether this Google account has already answered.
+  useEffect(() => {
+    if (!needsLogin || !user) return undefined;
+    let cancelled = false;
+    setStatus({ loading: true, submitted: false });
+    googleAuth
+      .getIdToken()
+      .then((token) => responseApi.status(survey.id, token))
+      .then(
+        (result) => !cancelled && setStatus({ loading: false, submitted: result.submitted }),
+        () => !cancelled && setStatus({ loading: false, submitted: false }),
+      );
+    if (user.name) setRespondentName((current) => current || user.name);
+    return () => {
+      cancelled = true;
+    };
+  }, [needsLogin, user, survey?.id]);
+
+  async function signIn({ switchAccount = false } = {}) {
+    setSigningIn(true);
+    setSignInError('');
+    try {
+      if (switchAccount) {
+        await googleAuth.signOut();
+        setRespondentName('');
+      }
+      await googleAuth.signIn();
+    } catch (err) {
+      if (!DISMISSED_POPUP.includes(err.code)) setSignInError(t('signin.failed'));
+    } finally {
+      setSigningIn(false);
+    }
+  }
 
   if (loading) return <Loading />;
   if (error?.status === 404) {
@@ -48,6 +100,30 @@ export default function SurveyPage() {
     return (
       <div className="container">
         <ErrorMessage error={error} onRetry={reload} />
+      </div>
+    );
+  }
+
+  if (needsLogin && !isGoogleSignInConfigured) {
+    return (
+      <div className="container">
+        <EmptyState icon="lock" title={t('signin.notConfigured')} />
+      </div>
+    );
+  }
+  if (needsLogin && (user === undefined || status.loading)) return <Loading />;
+  if (needsLogin && user === null) {
+    return (
+      <div className="container survey">
+        <SurveyHeader title={tl(survey.title)} description={tl(survey.description)} />
+        <SignInCard onSignIn={() => signIn()} busy={signingIn} error={signInError} />
+      </div>
+    );
+  }
+  if (needsLogin && status.submitted) {
+    return (
+      <div className="container">
+        <AlreadySubmitted user={user} onSwitch={() => signIn({ switchAccount: true })} />
       </div>
     );
   }
@@ -93,9 +169,18 @@ export default function SurveyPage() {
         surveyId: survey.id,
         answers: payload,
         respondentName: respondentName.trim(),
+        respondentToken: needsLogin ? await googleAuth.getIdToken() : undefined,
       });
       navigate('/success', { replace: true, state: { title: survey.title } });
     } catch (err) {
+      if (err.status === 409) {
+        setStatus({ loading: false, submitted: true });
+        return;
+      }
+      if (err.details?.auth) {
+        setSubmitError(t('signin.expired'));
+        return;
+      }
       if (err.details && typeof err.details === 'object') {
         setErrors(
           Object.fromEntries(
@@ -123,6 +208,8 @@ export default function SurveyPage() {
         answered={answeredCount}
         total={questions.length}
       />
+
+      {needsLogin && <AccountBar user={user} onSwitch={() => signIn({ switchAccount: true })} />}
 
       {!questions.length ? (
         <EmptyState message={t('survey.noQuestions')} />

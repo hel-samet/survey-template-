@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../../components/common/Button.jsx';
 import { EmptyState, ErrorMessage, Loading } from '../../components/common/Feedback.jsx';
+import Icon from '../../components/common/Icon.jsx';
 import PageHeader from '../../components/layout/PageHeader.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { useLanguage } from '../../hooks/useLanguage.js';
@@ -85,6 +86,12 @@ export default function SurveyList() {
                     <Link to={`/admin/surveys/${survey.id}/questions`} className="strong">
                       {tl(survey.title)}
                     </Link>
+                    {survey.requireLogin && (
+                      <span className="badge badge--type badge--inline" title={t('builder.requireLogin')}>
+                        <Icon name="lock" size={12} />
+                        Google
+                      </span>
+                    )}
                   </td>
                   <td className="num">{survey.questionCount}</td>
                   <td className="num">

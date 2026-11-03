@@ -1,5 +1,11 @@
 import { Response } from '../models/Response.js';
-import { buildCsv, buildReport, submitResponse as submit } from '../services/surveyService.js';
+import { respondentTokenFrom } from '../services/respondentAuthService.js';
+import {
+  buildCsv,
+  buildReport,
+  getSubmissionStatus,
+  submitResponse as submit,
+} from '../services/surveyService.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { parseId } from '../utils/parseId.js';
@@ -8,8 +14,19 @@ const MAX_PAGE_SIZE = 100;
 
 export const submitResponse = asyncHandler(async (req, res) => {
   const surveyId = parseId(req.body?.surveyId, 'surveyId');
-  const response = await submit(surveyId, req.body);
+  const response = await submit(surveyId, req.body, respondentTokenFrom(req));
   res.status(201).json({ data: { id: response.id, createdAt: response.createdAt } });
+});
+
+export const submissionStatus = asyncHandler(async (req, res) => {
+  const surveyId = parseId(req.query.surveyId, 'surveyId');
+  res.json({ data: await getSubmissionStatus(surveyId, respondentTokenFrom(req)) });
+});
+
+export const allowResubmit = asyncHandler(async (req, res) => {
+  const allowed = await Response.allowResubmit(parseId(req.params.id));
+  if (!allowed) throw new ApiError(404, 'Response not found or not from a signed-in respondent');
+  res.json({ data: { resubmitAllowed: true } });
 });
 
 export const listResponses = asyncHandler(async (req, res) => {

@@ -4,19 +4,48 @@ const SELECT = `
   SELECT id,
          survey_id       AS "surveyId",
          respondent_name AS "respondentName",
+         respondent_email AS "respondentEmail",
+         respondent_uid IS NOT NULL AS "signedIn",
+         resubmit_allowed AS "resubmitAllowed",
          answers,
          created_at      AS "createdAt"
   FROM responses`;
 
+// PostgreSQL unique_violation, raised by uq_responses_one_per_user on a double submit.
+const UNIQUE_VIOLATION = '23505';
+
 export const Response = {
-  async create({ surveyId, respondentName = null, answers }) {
+  async create({ surveyId, respondentName = null, respondentUid = null, respondentEmail = null, answers }) {
+    try {
+      const { rows } = await query(
+        `INSERT INTO responses (survey_id, respondent_name, respondent_uid, respondent_email, answers)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, survey_id AS "surveyId", respondent_name AS "respondentName",
+                   respondent_email AS "respondentEmail", answers, created_at AS "createdAt"`,
+        [surveyId, respondentName, respondentUid, respondentEmail, toJson(answers)],
+      );
+      return rows[0];
+    } catch (err) {
+      if (err.code === UNIQUE_VIOLATION) err.alreadySubmitted = true;
+      throw err;
+    }
+  },
+
+  // The response that currently blocks this person from answering again, if any.
+  async findBlocking(surveyId, respondentUid) {
     const { rows } = await query(
-      `INSERT INTO responses (survey_id, respondent_name, answers)
-       VALUES ($1, $2, $3)
-       RETURNING id, survey_id AS "surveyId", respondent_name AS "respondentName", answers, created_at AS "createdAt"`,
-      [surveyId, respondentName, toJson(answers)],
+      `${SELECT} WHERE survey_id = $1 AND respondent_uid = $2 AND NOT resubmit_allowed LIMIT 1`,
+      [surveyId, respondentUid],
     );
-    return rows[0];
+    return rows[0] || null;
+  },
+
+  async allowResubmit(id) {
+    const { rowCount } = await query(
+      'UPDATE responses SET resubmit_allowed = TRUE WHERE id = $1 AND respondent_uid IS NOT NULL',
+      [id],
+    );
+    return rowCount > 0;
   },
 
   async findById(id) {

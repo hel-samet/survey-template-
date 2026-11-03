@@ -35,6 +35,17 @@ export default function Responses() {
     }
   }
 
+  async function allowAgain(response) {
+    if (!window.confirm(t('responses.allowAgainConfirm', { email: response.respondentEmail }))) return;
+    setActionError(null);
+    try {
+      await responseApi.allowResubmit(response.id);
+      responsesState.reload();
+    } catch (err) {
+      setActionError(err);
+    }
+  }
+
   async function exportCsv() {
     setExporting(true);
     setActionError(null);
@@ -99,19 +110,34 @@ export default function Responses() {
                   <tr key={response.id}>
                     <td className="muted">{response.id}</td>
                     <td className="nowrap">{formatDateTime(response.createdAt, lang)}</td>
-                    <td>{response.respondentName || <span className="muted">{t('dashboard.anonymous')}</span>}</td>
+                    <td>
+                      <div className="respondent">
+                        <span>{response.respondentName || <span className="muted">{t('dashboard.anonymous')}</span>}</span>
+                        {response.respondentEmail && <span className="small muted">{response.respondentEmail}</span>}
+                        {response.resubmitAllowed && (
+                          <span className="badge badge--success">{t('responses.canAnswerAgain')}</span>
+                        )}
+                      </div>
+                    </td>
                     {survey.questions.map((question) => (
                       <td key={question.id}>{formatAnswer(question, response.answers[question.id])}</td>
                     ))}
                     <td>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        icon="trash"
-                        title={t('common.delete')}
-                        aria-label={t('common.delete')}
-                        onClick={() => remove(response.id)}
-                      />
+                      <div className="row-actions nowrap">
+                        {response.signedIn && !response.resubmitAllowed && (
+                          <Button size="sm" variant="secondary" icon="unlock" onClick={() => allowAgain(response)}>
+                            {t('responses.allowAgain')}
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          icon="trash"
+                          title={t('common.delete')}
+                          aria-label={t('common.delete')}
+                          onClick={() => remove(response.id)}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

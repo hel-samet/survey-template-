@@ -23,8 +23,13 @@ export const questionApi = {
 };
 
 export const responseApi = {
-  submit: ({ surveyId, answers, respondentName }) =>
-    api.post('/responses', { surveyId, answers, respondentName }).then(unwrap),
+  submit: ({ surveyId, answers, respondentName, respondentToken }) =>
+    request('/responses', { method: 'POST', body: { surveyId, answers, respondentName }, respondentToken }).then(
+      unwrap,
+    ),
+  status: (surveyId, respondentToken) =>
+    request(`/responses/status?surveyId=${surveyId}`, { respondentToken }).then(unwrap),
+  allowResubmit: (id) => api.post(`/responses/${id}/allow-resubmit`).then(unwrap),
 
   list: (surveyId, { page = 1, pageSize = 20 } = {}) =>
     api.get(`/responses?surveyId=${surveyId}&page=${page}&pageSize=${pageSize}`),

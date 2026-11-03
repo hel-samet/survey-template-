@@ -37,12 +37,14 @@ export class ApiError extends Error {
   }
 }
 
-export async function request(path, { method = 'GET', body, responseType = 'json' } = {}) {
+// `respondentToken` is a respondent's Google ID token for surveys that require sign-in.
+export async function request(path, { method = 'GET', body, responseType = 'json', respondentToken } = {}) {
   const headers = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 
-  const token = tokenStore.get();
+  const token = respondentToken ? null : tokenStore.get();
   if (token) headers.Authorization = `Bearer ${token}`;
+  if (respondentToken) headers['X-Respondent-Token'] = respondentToken;
 
   let res;
   try {

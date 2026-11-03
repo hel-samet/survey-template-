@@ -75,7 +75,23 @@ The workflow builds with `VITE_BASE=/<repo-name>/`, so the site is served at `ht
 
 **Custom domain:** add a `frontend/public/CNAME` file containing your domain, configure DNS, and change `VITE_BASE` in the workflow to `/`.
 
-## 4. Telegram notifications
+## 4. Google sign-in (one answer per person)
+
+Surveys with **Require Google sign-in** turned on (Admin → Survey → Details) ask respondents to sign in with Google and accept one answer per account. Admins can let a person answer again from **Responses → Allow again**. Sign-in uses Firebase Authentication (free).
+
+1. https://console.firebase.google.com → **Add project** (or reuse your existing one).
+2. **Build → Authentication → Get started → Sign-in method → Google → Enable**, pick a support email, **Save**.
+3. **Authentication → Settings → Authorized domains → Add domain** → `hel-samet.github.io`.
+4. **Project settings (⚙) → General → Your apps → Web (`</>`)** → register an app (no Hosting needed) and copy `apiKey`, `authDomain` and `projectId` from the config shown.
+5. GitHub repo → **Settings → Secrets and variables → Actions → Variables**, add:
+   - `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`
+
+   then rerun the **Deploy frontend to GitHub Pages** workflow. These web config values are public by design; access is controlled by the authorized domains.
+6. Render → **survey-api → Environment** → add `FIREBASE_PROJECT_ID` (same project ID) → save and deploy. The backend only needs the project ID to verify sign-ins; no key file is required.
+
+For local testing, put the same three `VITE_FIREBASE_*` values in `frontend/.env`, `FIREBASE_PROJECT_ID` in `backend/.env`, and keep `localhost` in the authorized domains (it is there by default).
+
+## 5. Telegram notifications
 
 1. Talk to **@BotFather** in Telegram → `/newbot` → copy the token.
 2. Add the bot to a group (or message it directly).
