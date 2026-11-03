@@ -1277,7 +1277,7 @@ select.field__control {
   display: grid;
   place-items: center;
   padding: 2rem 16px;
-  background: var(--surface);
+  background: var(--bg);
 }
 
 .login__lang {
@@ -1288,10 +1288,32 @@ select.field__control {
 
 .login__card {
   width: 100%;
-  max-width: 380px;
+  max-width: 420px;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
+  padding: 2.25rem 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 1px 2px rgb(16 32 30 / 0.04),
+    0 12px 24px -6px rgb(16 32 30 / 0.1),
+    0 32px 64px -16px rgb(15 118 110 / 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  .login__card {
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.4),
+      0 24px 48px -12px rgb(0 0 0 / 0.6);
+  }
+}
+
+@media (max-width: 480px) {
+  .login__card {
+    padding: 1.75rem 1.25rem;
+  }
 }
 
 .login__card h1,
