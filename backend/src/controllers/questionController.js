@@ -3,7 +3,7 @@ import { Survey } from '../models/Survey.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { parseId } from '../utils/parseId.js';
-import { normalizeOptions, validateQuestion } from '../validators/surveyValidator.js';
+import { normalizeQuestion, validateQuestion } from '../validators/surveyValidator.js';
 
 async function assertSurveyExists(surveyId) {
   if (!(await Survey.findById(surveyId))) throw new ApiError(404, 'Survey not found');
@@ -19,7 +19,7 @@ export const createQuestion = asyncHandler(async (req, res) => {
   const data = validateQuestion(req.body);
   await assertSurveyExists(surveyId);
 
-  data.options = normalizeOptions(data.type, data.options);
+  Object.assign(data, normalizeQuestion(data.type, data));
   const question = await Question.create({ ...data, surveyId });
   res.status(201).json({ data: question });
 });
@@ -30,7 +30,13 @@ export const updateQuestion = asyncHandler(async (req, res) => {
   if (!existing) throw new ApiError(404, 'Question not found');
 
   const data = validateQuestion(req.body, { partial: true });
-  data.options = normalizeOptions(data.type ?? existing.type, data.options ?? existing.options);
+  Object.assign(
+    data,
+    normalizeQuestion(data.type ?? existing.type, {
+      options: data.options ?? existing.options,
+      settings: data.settings ?? existing.settings,
+    }),
+  );
   res.json({ data: await Question.update(id, data) });
 });
 

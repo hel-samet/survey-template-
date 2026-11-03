@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import { CHOICE_TYPES, rangeOf } from '../validators/questionTypes.js';
 import { getSettings, sendMessage } from './telegramService.js';
 
 const TELEGRAM_MESSAGE_LIMIT = 4096;
@@ -10,14 +11,20 @@ const label = (localized) => localized?.en || localized?.km || '';
 
 export function formatAnswer(question, value, lang = 'en') {
   if (value === undefined || value === null) return '';
-  if (question.type === 'text') return String(value);
-  const ids = Array.isArray(value) ? value : [value];
-  return ids
-    .map((id) => {
-      const option = question.options.find((o) => o.id === id);
-      return option ? option.label[lang] || label(option.label) : id;
-    })
-    .join(', ');
+
+  if (CHOICE_TYPES.includes(question.type)) {
+    const ids = Array.isArray(value) ? value : [value];
+    return ids
+      .map((id) => {
+        const option = question.options.find((o) => o.id === id);
+        return option ? option.label[lang] || label(option.label) : id;
+      })
+      .join(', ');
+  }
+
+  if (question.type === 'rating') return `${value}/${rangeOf(question).max} ★`;
+  if (question.type === 'scale') return `${value}/${rangeOf(question).max}`;
+  return String(value);
 }
 
 export function formatResponseMessage(survey, response) {

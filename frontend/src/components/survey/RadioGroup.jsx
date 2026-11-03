@@ -1,11 +1,12 @@
 import { useLanguage } from '../../hooks/useLanguage.js';
 import Checkbox from '../common/Checkbox.jsx';
 
-export default function RadioGroup({ name, options, value, onChange }) {
+// layout="row" places options side by side (used for Yes / No).
+export default function RadioGroup({ name, options, value, onChange, layout = 'column' }) {
   const { tl } = useLanguage();
 
   return (
-    <div className="choice-list" role="radiogroup">
+    <div className={`choice-list ${layout === 'row' ? 'choice-list--row' : ''}`} role="radiogroup">
       {options.map((option) => (
         <Checkbox
           key={option.id}

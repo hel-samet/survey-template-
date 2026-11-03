@@ -61,7 +61,7 @@ BEGIN
   (
     sid,
     '{"en": "Any other comments?", "km": "មានមតិយោបល់ផ្សេងទៀតទេ?"}',
-    'text',
+    'paragraph',
     '[]',
     FALSE,
     3

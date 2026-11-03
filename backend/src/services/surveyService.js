@@ -2,8 +2,11 @@ import { Question } from '../models/Question.js';
 import { Response } from '../models/Response.js';
 import { Survey } from '../models/Survey.js';
 import { ApiError } from '../utils/ApiError.js';
+import { CHOICE_TYPES, RANGE_TYPES, rangeOf } from '../validators/questionTypes.js';
 import { cleanRespondentName, validateAnswers } from '../validators/responseValidator.js';
 import { formatAnswer, notifyNewResponse } from './notificationService.js';
+
+const round = (n) => Math.round(n * 100) / 100;
 
 export async function getSurveyWithQuestions(id, { activeOnly = false } = {}) {
   const survey = await Survey.findById(id);
@@ -43,22 +46,37 @@ export async function buildReport(surveyId) {
       .map((response) => ({ value: response.answers[question.id], createdAt: response.createdAt }))
       .filter(({ value }) => value !== undefined && value !== null && value !== '');
 
-    if (question.type === 'text') {
-      return { ...question, answeredCount: values.length, textAnswers: values.slice(0, 50) };
-    }
+    const base = { ...question, answeredCount: values.length };
 
-    const counts = Object.fromEntries(question.options.map((option) => [option.id, 0]));
-    for (const { value } of values) {
-      for (const id of Array.isArray(value) ? value : [value]) {
-        if (id in counts) counts[id] += 1;
+    if (CHOICE_TYPES.includes(question.type)) {
+      const counts = Object.fromEntries(question.options.map((option) => [option.id, 0]));
+      for (const { value } of values) {
+        for (const id of Array.isArray(value) ? value : [value]) {
+          if (id in counts) counts[id] += 1;
+        }
       }
+      return { ...base, options: question.options.map((option) => ({ ...option, count: counts[option.id] })) };
     }
 
-    return {
-      ...question,
-      answeredCount: values.length,
-      options: question.options.map((option) => ({ ...option, count: counts[option.id] })),
-    };
+    const numbers = values.map(({ value }) => Number(value)).filter(Number.isFinite);
+    const average = numbers.length ? round(numbers.reduce((sum, n) => sum + n, 0) / numbers.length) : null;
+
+    if (RANGE_TYPES.includes(question.type)) {
+      const { min, max } = rangeOf(question);
+      const distribution = [];
+      for (let point = max; point >= min; point -= 1) {
+        distribution.push({ value: point, count: numbers.filter((n) => n === point).length });
+      }
+      return { ...base, average, distribution };
+    }
+
+    if (question.type === 'number') {
+      const stats = numbers.length ? { average, min: Math.min(...numbers), max: Math.max(...numbers) } : null;
+      return { ...base, stats, textAnswers: values.slice(0, 50) };
+    }
+
+    // text, paragraph, email, phone, date
+    return { ...base, textAnswers: values.slice(0, 50) };
   });
 
   const { questions: _omit, ...surveyInfo } = survey;

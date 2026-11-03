@@ -1,8 +1,9 @@
 import crypto from 'node:crypto';
 import { ApiError } from '../utils/ApiError.js';
+import { OPTION_TYPES, QUESTION_TYPES, YES_NO_OPTIONS } from './questionTypes.js';
 
 export const LANGUAGES = ['en', 'km'];
-export const QUESTION_TYPES = ['checkbox', 'radio', 'text'];
+export { QUESTION_TYPES };
 
 // Accepts "text" or { en, km } and returns a cleaned { en?, km? } object.
 function localized(value, { field, required = false, max = 500 }) {
@@ -71,6 +72,12 @@ export function validateQuestion(body = {}, { partial = false } = {}) {
   if (body.options !== undefined) {
     data.options = validateOptions(body.options);
   }
+  if (body.settings !== undefined) {
+    if (body.settings === null || typeof body.settings !== 'object' || Array.isArray(body.settings)) {
+      throw new ApiError(400, 'settings must be an object');
+    }
+    data.settings = body.settings;
+  }
   if (body.isRequired !== undefined) {
     data.isRequired = Boolean(body.isRequired);
   }
@@ -80,11 +87,37 @@ export function validateQuestion(body = {}, { partial = false } = {}) {
   return data;
 }
 
-// Choice questions need options; text questions never store any.
-export function normalizeOptions(type, options = []) {
-  if (type === 'text') return [];
-  if (options.length < 2) {
-    throw new ApiError(400, 'Checkbox and radio questions need at least 2 options');
+const intIn = (value, min, max, fallback) => {
+  const n = Number.parseInt(value, 10);
+  return Number.isInteger(n) && n >= min && n <= max ? n : fallback;
+};
+
+function normalizeSettings(type, settings = {}) {
+  if (type === 'rating') {
+    return { max: intIn(settings.max, 3, 10, 5) };
   }
-  return options;
+  if (type === 'scale') {
+    const min = intIn(settings.min, 0, 1, 1);
+    const max = intIn(settings.max, min + 1, 10, 5);
+    return {
+      min,
+      max,
+      minLabel: localized(settings.minLabel, { field: 'settings.minLabel', max: 60 }),
+      maxLabel: localized(settings.maxLabel, { field: 'settings.maxLabel', max: 60 }),
+    };
+  }
+  return {};
+}
+
+// Gives every type a consistent shape: custom options only where the admin writes them,
+// fixed Yes/No options, and settings cleaned to what the type understands.
+export function normalizeQuestion(type, { options = [], settings = {} } = {}) {
+  if (OPTION_TYPES.includes(type) && options.length < 2) {
+    throw new ApiError(400, 'Checkbox, multiple choice and dropdown questions need at least 2 options');
+  }
+
+  return {
+    options: OPTION_TYPES.includes(type) ? options : type === 'yesno' ? YES_NO_OPTIONS : [],
+    settings: normalizeSettings(type, settings),
+  };
 }

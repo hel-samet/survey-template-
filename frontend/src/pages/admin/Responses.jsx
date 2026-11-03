@@ -7,6 +7,7 @@ import SurveyTabs from '../../components/layout/SurveyTabs.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { useLanguage } from '../../hooks/useLanguage.js';
 import { formatDateTime } from '../../i18n/index.js';
+import { formatAnswerValue } from '../../questionTypes.js';
 import { responseApi, surveyApi } from '../../services/surveyService.js';
 
 const PAGE_SIZE = 20;
@@ -21,13 +22,7 @@ export default function Responses() {
   const surveyState = useAsync(() => surveyApi.getAdmin(surveyId), [surveyId]);
   const responsesState = useAsync(() => responseApi.list(surveyId, { page, pageSize: PAGE_SIZE }), [surveyId, page]);
 
-  const formatAnswer = (question, value) => {
-    if (value === undefined || value === null || value === '') return '—';
-    if (question.type === 'text') return value;
-    return (Array.isArray(value) ? value : [value])
-      .map((optionId) => tl(question.options.find((o) => o.id === optionId)?.label) || optionId)
-      .join(', ');
-  };
+  const formatAnswer = (question, value) => formatAnswerValue(question, value, tl);
 
   async function remove(responseId) {
     if (!window.confirm(t('responses.deleteConfirm'))) return;

@@ -27,6 +27,18 @@ const PATHS = {
   message: 'M4 5h16v11H8l-4 4z',
   x: 'M6 6l12 12M18 6 6 18',
   sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z',
+  checkSquare: 'M4 4h16v16H4zM8 12l3 3 5-6',
+  circleDot: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6',
+  chevronDown: 'M4 5h16v14H4zM9 11l3 3 3-3',
+  thumbsUp: 'M7 11v9H4v-9zM7 11l4-8a2 2 0 0 1 3 2l-1 4h5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 16.8 20H7',
+  star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z',
+  sliders: 'M4 7h10M18 7h2M4 17h4M12 17h8M14 4v6M8 14v6',
+  type: 'M5 6V4h14v2M12 4v16M9 20h6',
+  alignLeft: 'M4 6h16M4 10h11M4 14h16M4 18h9',
+  hash: 'M9 4 7 20M17 4l-2 16M4 9h16M3 15h16',
+  mail: 'M3 6h18v12H3zM3 7l9 6 9-6',
+  phone: 'M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1M11 18h2',
+  calendar: 'M4 6h16v14H4zM4 10h16M8 3v5M16 3v5',
 };
 
 export default function Icon({ name, size = 18, className = '', strokeWidth = 1.9, ...props }) {

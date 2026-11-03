@@ -7,24 +7,29 @@ import { EmptyState, ErrorMessage, Loading } from '../../components/common/Feedb
 import Input from '../../components/common/Input.jsx';
 import PageHeader from '../../components/layout/PageHeader.jsx';
 import SurveyTabs from '../../components/layout/SurveyTabs.jsx';
+import QuestionPreview from '../../components/survey/QuestionPreview.jsx';
+import ScaleInput from '../../components/survey/ScaleInput.jsx';
+import TypePicker from '../../components/survey/TypePicker.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { useLanguage } from '../../hooks/useLanguage.js';
+import { DEFAULT_SETTINGS, OPTION_TYPES, range, TYPE_ICONS } from '../../questionTypes.js';
 import { questionApi, surveyApi } from '../../services/surveyService.js';
-
-const QUESTION_TYPES = ['checkbox', 'radio', 'text'];
 
 let draftKey = 0;
 const blankOption = () => ({ key: `new-${++draftKey}`, id: undefined, en: '', km: '' });
 
 function toDraft(question) {
+  const type = question?.type || 'checkbox';
+  const hasCustomOptions = question && OPTION_TYPES.includes(type) && question.options.length;
   return {
     textEn: question?.text.en || '',
     textKm: question?.text.km || '',
-    type: question?.type || 'checkbox',
+    type,
     isRequired: question?.isRequired ?? false,
-    options: question?.options.length
+    options: hasCustomOptions
       ? question.options.map((o) => ({ key: o.id, id: o.id, en: o.label.en || '', km: o.label.km || '' }))
       : [blankOption(), blankOption()],
+    settings: { ...DEFAULT_SETTINGS[type], ...question?.settings },
   };
 }
 
@@ -147,7 +152,10 @@ function QuestionItem({ question, index, isFirst, isLast, onMove, onDelete, onSa
             {index + 1}. {tl(question.text)}
           </h3>
           <div className="badges">
-            <span className="badge">{t(`questions.typeShort.${question.type}`)}</span>
+            <span className="badge badge--type">
+              <Icon name={TYPE_ICONS[question.type]} size={13} />
+              {t(`questions.types.${question.type}`)}
+            </span>
             {question.isRequired && <span className="badge badge--warning">{t('common.required')}</span>}
           </div>
         </div>
@@ -183,16 +191,9 @@ function QuestionItem({ question, index, isFirst, isLast, onMove, onDelete, onSa
           />
         </div>
       </div>
-      {question.type !== 'text' && (
-        <ul className="option-preview">
-          {question.options.map((option) => (
-            <li key={option.id}>
-              <span className={`choice__box choice__box--${question.type}`} aria-hidden="true" />
-              {tl(option.label)}
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="question-item__preview">
+        <QuestionPreview question={question} />
+      </div>
     </article>
   );
 }
@@ -203,24 +204,29 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const isNew = !question;
-  const isChoice = draft.type !== 'text';
+  const fieldId = `q-${question?.id ?? 'new'}`;
+  const hasOptions = OPTION_TYPES.includes(draft.type);
 
   const set = (patch) => setDraft((prev) => ({ ...prev, ...patch }));
+  const setSettings = (patch) => set({ settings: { ...draft.settings, ...patch } });
+  const setLabel = (key, lang, text) => setSettings({ [key]: { ...draft.settings[key], [lang]: text } });
   const setOption = (key, patch) =>
     set({ options: draft.options.map((o) => (o.key === key ? { ...o, ...patch } : o)) });
+  const changeType = (type) => set({ type, settings: { ...DEFAULT_SETTINGS[type], ...draft.settings } });
 
   async function handleSubmit(event) {
     event.preventDefault();
     const options = draft.options.filter((o) => o.en.trim() || o.km.trim());
 
     if (!draft.textEn.trim() && !draft.textKm.trim()) return setError(t('questions.textRequired'));
-    if (isChoice && options.length < 2) return setError(t('questions.needOptions'));
+    if (hasOptions && options.length < 2) return setError(t('questions.needOptions'));
 
     const payload = {
       text: { en: draft.textEn, km: draft.textKm },
       type: draft.type,
       isRequired: draft.isRequired,
-      options: isChoice ? options.map((o) => ({ id: o.id, label: { en: o.en, km: o.km } })) : [],
+      options: hasOptions ? options.map((o) => ({ id: o.id, label: { en: o.en, km: o.km } })) : [],
+      settings: draft.settings,
     };
 
     setSaving(true);
@@ -255,38 +261,112 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
         />
       </div>
 
-      <div className="grid grid--2 align-end">
-        <div className="field">
-          <label className="field__label" htmlFor={`type-${question?.id ?? 'new'}`}>
-            {t('questions.type')}
-          </label>
-          <select
-            id={`type-${question?.id ?? 'new'}`}
-            className="field__control"
-            value={draft.type}
-            onChange={(e) => set({ type: e.target.value })}
-          >
-            {QUESTION_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {t(`questions.types.${type}`)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Checkbox
-          compact
-          label={t('questions.required')}
-          checked={draft.isRequired}
-          onChange={(checked) => set({ isRequired: checked })}
-        />
+      <div className="field">
+        <span className="field__label" id={`${fieldId}-label`}>
+          {t('questions.type')}
+        </span>
+        <TypePicker id={fieldId} value={draft.type} onChange={changeType} />
       </div>
 
-      {isChoice && (
+      <Checkbox
+        compact
+        label={t('questions.required')}
+        checked={draft.isRequired}
+        onChange={(checked) => set({ isRequired: checked })}
+      />
+
+      {draft.type === 'yesno' && <p className="note">{t('questions.yesnoNote')}</p>}
+
+      {draft.type === 'rating' && (
+        <div className="options-editor options-editor--inline">
+          <label className="field">
+            <span className="field__label">{t('questions.ratingMax')}</span>
+            <select
+              className="field__control field__control--select"
+              value={draft.settings.max}
+              onChange={(e) => setSettings({ max: Number(e.target.value) })}
+            >
+              {range(3, 10).map((n) => (
+                <option key={n} value={n}>
+                  {n} ★
+                </option>
+              ))}
+            </select>
+          </label>
+          <QuestionPreview question={{ type: 'rating', settings: draft.settings, options: [] }} />
+        </div>
+      )}
+
+      {draft.type === 'scale' && (
+        <div className="options-editor">
+          <div className="grid grid--pairs">
+            <label className="field">
+              <span className="field__label">{t('questions.scaleFrom')}</span>
+              <select
+                className="field__control field__control--select"
+                value={draft.settings.min}
+                onChange={(e) => setSettings({ min: Number(e.target.value) })}
+              >
+                {[0, 1].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span className="field__label">{t('questions.scaleTo')}</span>
+              <select
+                className="field__control field__control--select"
+                value={draft.settings.max}
+                onChange={(e) => setSettings({ max: Number(e.target.value) })}
+              >
+                {range(2, 10).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {['minLabel', 'maxLabel'].map((key) =>
+              ['en', 'km'].map((lang) => (
+                <Input
+                  key={`${key}-${lang}`}
+                  label={t(`questions.${key}.${lang}`, { value: key === 'minLabel' ? draft.settings.min : draft.settings.max })}
+                  lang={lang}
+                  maxLength={60}
+                  value={draft.settings[key]?.[lang] || ''}
+                  onChange={(e) => setLabel(key, lang, e.target.value)}
+                />
+              )),
+            )}
+          </div>
+          <span className="field__label">{t('questions.preview')}</span>
+          <ScaleInput
+            name={`${fieldId}-preview`}
+            min={draft.settings.min}
+            max={Math.max(draft.settings.max, draft.settings.min + 1)}
+            minLabel={draft.settings.minLabel}
+            maxLabel={draft.settings.maxLabel}
+            onChange={() => {}}
+          />
+        </div>
+      )}
+
+      {!hasOptions && !['yesno', 'rating', 'scale'].includes(draft.type) && (
+        <QuestionPreview question={{ type: draft.type, options: [], settings: {} }} />
+      )}
+
+      {hasOptions && (
         <fieldset className="options-editor">
           <legend className="field__label">{t('questions.options')}</legend>
           {draft.options.map((option, index) => (
             <div key={option.key} className="options-editor__row">
-              <span className={`choice__box choice__box--${draft.type}`} aria-hidden="true" />
+              {draft.type === 'dropdown' ? (
+                <span className="options-editor__index">{index + 1}.</span>
+              ) : (
+                <span className={`choice__box choice__box--${draft.type}`} aria-hidden="true" />
+              )}
               <input
                 className="field__control"
                 placeholder={t('questions.optionEn')}

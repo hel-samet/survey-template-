@@ -1982,3 +1982,341 @@ select.field__control {
     margin-left: 0;
   }
 }
+
+/* ==========================================================================
+   Answer types: picker, rating, scale, previews
+   ========================================================================== */
+.type-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.type-picker__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.type-picker__group-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+:lang(km) .type-picker__group-label {
+  letter-spacing: 0;
+  font-size: 0.8rem;
+}
+
+.type-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.45rem;
+}
+
+.type-card {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.type-card:hover {
+  border-color: var(--border-strong);
+  background: var(--primary-softer);
+}
+
+.type-card.is-active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.type-card:has(input:focus-visible) {
+  box-shadow: var(--focus);
+}
+
+.type-card__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.type-card.is-active .type-card__icon {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.type-card__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--primary-softer);
+  border: 1px dashed var(--primary);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.options-editor > .grid,
+.options-editor > .scale {
+  width: 100%;
+}
+
+.grid--pairs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 600px) {
+  .grid--pairs {
+    grid-template-columns: 1fr;
+  }
+}
+
+.options-editor--inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1.25rem;
+}
+
+.options-editor--inline .field {
+  width: 160px;
+}
+
+.options-editor__index {
+  width: 22px;
+  text-align: right;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.badge--type {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+/* Survey form inputs */
+.choice-list--row {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.choice-list--row .choice {
+  flex: 1 1 140px;
+}
+
+.rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.rating__star {
+  display: inline-grid;
+  place-items: center;
+  padding: 0.15rem;
+  border-radius: 8px;
+  color: var(--border-strong);
+  cursor: pointer;
+  transition: color 0.12s, transform 0.12s;
+}
+
+.rating__star:hover {
+  transform: scale(1.12);
+}
+
+.rating__star.is-on {
+  color: var(--accent);
+}
+
+.rating__star.is-on .icon {
+  fill: currentColor;
+}
+
+.rating__star:has(input:focus-visible) {
+  box-shadow: var(--focus);
+}
+
+.rating__value {
+  margin-left: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.scale__points {
+  display: grid;
+  grid-template-columns: repeat(var(--points), minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.scale__point {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.scale__point:hover {
+  border-color: var(--border-strong);
+  background: var(--primary-softer);
+}
+
+.scale__point.is-on {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.scale__point:has(input:focus-visible) {
+  box-shadow: var(--focus);
+}
+
+.scale__labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.scale__labels span:last-child {
+  text-align: right;
+}
+
+.field__control--date,
+.field__control--number,
+.field__control--phone {
+  max-width: 320px;
+}
+
+/* Builder previews */
+.question-item__preview {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed var(--border);
+}
+
+.question-item__preview .option-preview {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.option-preview--row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+}
+
+.preview-row {
+  display: flex;
+  gap: 0.15rem;
+  color: var(--accent);
+}
+
+.preview-star {
+  fill: currentColor;
+  opacity: 0.85;
+}
+
+.preview-scale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.preview-scale__point {
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.preview-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 420px;
+  padding: 0.6rem 0.8rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  font-size: 0.9rem;
+}
+
+.preview-field--tall {
+  align-items: flex-start;
+  min-height: 72px;
+}
+
+/* Report summary numbers */
+.report__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+.report__stat {
+  display: flex;
+  flex-direction: column;
+  min-width: 110px;
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.report__stat-value {
+  font-size: 1.45rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.report__stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 600px) {
+  .scale__points {
+    grid-template-columns: repeat(min(var(--points), 6), minmax(0, 1fr));
+  }
+}

@@ -8,6 +8,7 @@ import SurveyQuestion from '../components/survey/SurveyQuestion.jsx';
 import SurveySubmit from '../components/survey/SurveySubmit.jsx';
 import { useAsync } from '../hooks/useAsync.js';
 import { useLanguage } from '../hooks/useLanguage.js';
+import { formatError } from '../questionTypes.js';
 import { responseApi, surveyApi } from '../services/surveyService.js';
 
 const hasValue = (value) => (Array.isArray(value) ? value.length > 0 : Boolean(String(value ?? '').trim()));
@@ -61,17 +62,21 @@ export default function SurveyPage() {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    const missing = {};
+    const problems = {};
     for (const question of questions) {
-      if (question.isRequired && !hasValue(answers[question.id])) {
-        missing[question.id] = t('survey.errors.required');
+      const value = answers[question.id];
+      if (question.isRequired && !hasValue(value)) {
+        problems[question.id] = t('survey.errors.required');
+      } else {
+        const formatKey = formatError(question, value);
+        if (formatKey) problems[question.id] = t(formatKey);
       }
     }
 
-    if (Object.keys(missing).length) {
-      setErrors(missing);
+    if (Object.keys(problems).length) {
+      setErrors(problems);
       setSubmitError(t('survey.errors.summary'));
-      const first = questions.find((q) => missing[q.id]);
+      const first = questions.find((q) => problems[q.id]);
       document.getElementById(`q-${first.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
@@ -88,7 +93,14 @@ export default function SurveyPage() {
       navigate('/success', { replace: true, state: { title: survey.title } });
     } catch (err) {
       if (err.details && typeof err.details === 'object') {
-        setErrors(Object.fromEntries(Object.keys(err.details).map((qid) => [qid, t('survey.errors.required')])));
+        setErrors(
+          Object.fromEntries(
+            Object.entries(err.details).map(([qid, message]) => [
+              qid,
+              message === 'This question is required' ? t('survey.errors.required') : t('survey.errors.invalid'),
+            ]),
+          ),
+        );
       }
       setSubmitError(err.message || t('common.error'));
     } finally {

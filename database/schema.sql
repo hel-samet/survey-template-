@@ -25,18 +25,29 @@ CREATE TRIGGER surveys_updated_at BEFORE UPDATE ON surveys
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- Questions -----------------------------------------------------------------
--- options: [{"id": "opt_a1b2", "label": {"en": "...", "km": "..."}}, ...]
+-- options:  [{"id": "opt_a1b2", "label": {"en": "...", "km": "..."}}, ...]
+-- settings: per-type config, e.g. rating {"max": 5}, scale {"min": 0, "max": 10, "minLabel": {...}, "maxLabel": {...}}
+-- Type list must match backend/src/validators/questionTypes.js.
 CREATE TABLE IF NOT EXISTS questions (
   id          SERIAL PRIMARY KEY,
   survey_id   INTEGER     NOT NULL REFERENCES surveys(id) ON DELETE CASCADE,
   text        JSONB       NOT NULL,
-  type        VARCHAR(20) NOT NULL CHECK (type IN ('checkbox', 'radio', 'text')),
+  type        VARCHAR(20) NOT NULL,
   options     JSONB       NOT NULL DEFAULT '[]'::jsonb,
+  settings    JSONB       NOT NULL DEFAULT '{}'::jsonb,
   is_required BOOLEAN     NOT NULL DEFAULT FALSE,
   position    INTEGER     NOT NULL DEFAULT 0,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Upgrades databases created before more answer types were added.
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE questions DROP CONSTRAINT IF EXISTS questions_type_check;
+ALTER TABLE questions ADD CONSTRAINT questions_type_check CHECK (type IN (
+  'checkbox', 'radio', 'dropdown', 'yesno', 'rating', 'scale',
+  'text', 'paragraph', 'number', 'email', 'phone', 'date'
+));
 
 CREATE INDEX IF NOT EXISTS idx_questions_survey_position ON questions (survey_id, position);
 
