@@ -1131,13 +1131,6 @@ select.field__control {
   color: var(--danger);
 }
 
-/* Cloudflare Turnstile widget (fixed 300×65 iframe) */
-.captcha {
-  display: flex;
-  justify-content: center;
-  min-height: 65px;
-}
-
 .survey-submit {
   display: flex;
   flex-direction: column;

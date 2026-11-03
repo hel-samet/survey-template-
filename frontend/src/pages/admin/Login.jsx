@@ -1,10 +1,9 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button.jsx';
 import Icon from '../../components/common/Icon.jsx';
 import Input from '../../components/common/Input.jsx';
 import LanguageSwitcher from '../../components/common/LanguageSwitcher.jsx';
-import Turnstile, { isCaptchaEnabled } from '../../components/common/Turnstile.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useLanguage } from '../../hooks/useLanguage.js';
 
@@ -19,26 +18,18 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState('');
-  const captchaRef = useRef(null);
 
   if (isAuthenticated) return <Navigate to={redirectTo} replace />;
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (isCaptchaEnabled && !captchaToken) {
-      setError(t('common.captchaRequired'));
-      return;
-    }
-
     setSubmitting(true);
     setError('');
     try {
-      await login(username, password, captchaToken || undefined);
+      await login(username, password);
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      captchaRef.current?.reset();
-      setError(err.details?.captcha ? t('common.captchaFailed') : err.message);
+      setError(err.message);
       setSubmitting(false);
     }
   }
@@ -91,8 +82,6 @@ export default function Login() {
           required
           onChange={(event) => setPassword(event.target.value)}
         />
-
-        <Turnstile ref={captchaRef} action="admin-login" onToken={setCaptchaToken} />
 
         {error && (
           <p className="alert alert--error" role="alert">

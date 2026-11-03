@@ -10,8 +10,8 @@ function decodeToken(token) {
 }
 
 export const authService = {
-  async login(username, password, captchaToken) {
-    const { data } = await api.post('/auth/login', { username, password, captchaToken });
+  async login(username, password) {
+    const { data } = await api.post('/auth/login', { username, password });
     tokenStore.set(data.token);
     return data.user;
   },

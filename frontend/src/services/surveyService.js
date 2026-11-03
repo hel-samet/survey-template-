@@ -23,8 +23,8 @@ export const questionApi = {
 };
 
 export const responseApi = {
-  submit: ({ surveyId, answers, respondentName, captchaToken }) =>
-    api.post('/responses', { surveyId, answers, respondentName, captchaToken }).then(unwrap),
+  submit: ({ surveyId, answers, respondentName }) =>
+    api.post('/responses', { surveyId, answers, respondentName }).then(unwrap),
 
   list: (surveyId, { page = 1, pageSize = 20 } = {}) =>
     api.get(`/responses?surveyId=${surveyId}&page=${page}&pageSize=${pageSize}`),
