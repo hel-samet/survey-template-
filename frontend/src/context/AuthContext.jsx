@@ -14,8 +14,8 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener(AUTH_LOGOUT_EVENT, handleLogout);
   }, []);
 
-  const login = useCallback(async (username, password) => {
-    const loggedIn = await authService.login(username, password);
+  const login = useCallback(async (username, password, captchaToken) => {
+    const loggedIn = await authService.login(username, password, captchaToken);
     setUser(loggedIn);
     return loggedIn;
   }, []);

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/common/Button.jsx';
 import { EmptyState, ErrorMessage, Loading } from '../components/common/Feedback.jsx';
 import Input from '../components/common/Input.jsx';
+import Turnstile, { isCaptchaEnabled } from '../components/common/Turnstile.jsx';
 import SurveyHeader from '../components/survey/SurveyHeader.jsx';
 import SurveyQuestion from '../components/survey/SurveyQuestion.jsx';
 import SurveySubmit from '../components/survey/SurveySubmit.jsx';
@@ -23,6 +24,8 @@ export default function SurveyPage() {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const captchaRef = useRef(null);
 
   if (loading) return <Loading />;
   if (error?.status === 404) {
@@ -76,6 +79,11 @@ export default function SurveyPage() {
       return;
     }
 
+    if (isCaptchaEnabled && !captchaToken) {
+      setSubmitError(t('common.captchaRequired'));
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError('');
     try {
@@ -84,13 +92,20 @@ export default function SurveyPage() {
         surveyId: survey.id,
         answers: payload,
         respondentName: respondentName.trim() || undefined,
+        captchaToken: captchaToken || undefined,
       });
       navigate('/success', { replace: true, state: { title: survey.title } });
     } catch (err) {
-      if (err.details && typeof err.details === 'object') {
-        setErrors(Object.fromEntries(Object.keys(err.details).map((qid) => [qid, t('survey.errors.required')])));
+      // Turnstile tokens are single-use, so get a fresh one before the next attempt.
+      captchaRef.current?.reset();
+      if (err.details?.captcha) {
+        setSubmitError(t('common.captchaFailed'));
+      } else {
+        if (err.details && typeof err.details === 'object') {
+          setErrors(Object.fromEntries(Object.keys(err.details).map((qid) => [qid, t('survey.errors.required')])));
+        }
+        setSubmitError(err.message || t('common.error'));
       }
-      setSubmitError(err.message || t('common.error'));
     } finally {
       setSubmitting(false);
     }
@@ -132,6 +147,7 @@ export default function SurveyPage() {
             />
           </div>
 
+          <Turnstile ref={captchaRef} action="submit-survey" onToken={setCaptchaToken} />
           <SurveySubmit submitting={submitting} error={submitError} />
         </>
       )}

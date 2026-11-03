@@ -22,6 +22,8 @@ const en = {
     preview: 'Preview',
     english: 'English',
     khmer: 'Khmer',
+    captchaRequired: 'Please complete the security check above.',
+    captchaFailed: 'The security check failed or expired. Please try again.',
   },
   home: {
     eyebrow: 'Your voice matters',

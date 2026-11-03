@@ -40,6 +40,8 @@ jobs:
         env:
           # Set in Settings → Secrets and variables → Actions → Variables
           VITE_API_URL: ${{ vars.VITE_API_URL }}
+          # Cloudflare Turnstile site key (public). Leave unset to disable the CAPTCHA.
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
           # Project sites are served from /<repo-name>/
           VITE_BASE: /${{ github.event.repository.name }}/
 

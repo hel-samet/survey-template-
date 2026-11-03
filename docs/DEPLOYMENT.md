@@ -75,7 +75,21 @@ The workflow builds with `VITE_BASE=/<repo-name>/`, so the site is served at `ht
 
 **Custom domain:** add a `frontend/public/CNAME` file containing your domain, configure DNS, and change `VITE_BASE` in the workflow to `/`.
 
-## 4. Telegram notifications
+## 4. CAPTCHA (Cloudflare Turnstile)
+
+Turnstile protects **survey submission** and **admin login** from bots. It is free, and most visitors never see a puzzle. It is off until both keys are set.
+
+1. Sign in at https://dash.cloudflare.com → **Turnstile** → **Add widget**.
+2. Widget name: `survey`. Hostnames: `hel-samet.github.io` (add `localhost` for local testing). Mode: **Managed**.
+3. Copy the two keys:
+   - **Site key** (public) → GitHub repo **Settings → Secrets and variables → Actions → Variables** → `VITE_TURNSTILE_SITE_KEY`, then rerun the Pages workflow.
+   - **Secret key** (private) → Render **survey-api → Environment** → `TURNSTILE_SECRET_KEY`, then save and deploy.
+
+Set the **site key first** and redeploy the frontend, then add the secret key on Render. If the backend has a secret but the frontend has no site key, every submission is rejected.
+
+For local testing, use Cloudflare's dummy keys: site key `1x00000000000000000000AA` with secret `1x0000000000000000000000000000000AA` (always passes) or `2x0000000000000000000000000000000AA` (always fails).
+
+## 5. Telegram notifications
 
 1. Talk to **@BotFather** in Telegram → `/newbot` → copy the token.
 2. Add the bot to a group (or message it directly).

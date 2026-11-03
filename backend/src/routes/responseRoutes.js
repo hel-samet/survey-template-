@@ -7,12 +7,13 @@ import {
   submitResponse,
 } from '../controllers/responseController.js';
 import { requireAuth } from '../middleware/authMiddleware.js';
+import { requireCaptcha } from '../middleware/captchaMiddleware.js';
 import { submitLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
 // Public
-router.post('/', submitLimiter, submitResponse);
+router.post('/', submitLimiter, requireCaptcha, submitResponse);
 
 // Admin
 router.get('/', requireAuth, listResponses);

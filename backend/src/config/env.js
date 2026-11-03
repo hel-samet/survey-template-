@@ -27,6 +27,9 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '12h',
 
+  // Cloudflare Turnstile CAPTCHA. Leave empty to disable verification (e.g. local development).
+  turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY || '',
+
   telegram: {
     botToken: process.env.TELEGRAM_BOT_TOKEN || '',
     chatId: process.env.TELEGRAM_CHAT_ID || '',
