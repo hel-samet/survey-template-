@@ -27,6 +27,12 @@ export const OPTION_TYPES = ['checkbox', 'radio', 'dropdown'];
 export const CHOICE_TYPES = [...OPTION_TYPES, 'yesno'];
 export const RANGE_TYPES = ['rating', 'scale'];
 
+// "Other" with a free-text answer (settings.allowOther). The server appends an option with OTHER_ID;
+// the typed text travels next to the answer as answers["<questionId>:other"].
+export const OTHER_TYPES = ['checkbox', 'radio'];
+export const OTHER_ID = '__other';
+export const otherKey = (questionId) => `${questionId}:other`;
+
 export const DEFAULT_SETTINGS = {
   rating: { max: 5 },
   scale: { min: 1, max: 5, minLabel: {}, maxLabel: {} },
@@ -56,11 +62,17 @@ export function formatError(question, value) {
 }
 
 // Human-readable answer for tables. `tl` picks the right language from { en, km }.
-export function formatAnswerValue(question, value, tl) {
+// `answers` is the whole response's answers object (it holds the "Other" text).
+export function formatAnswerValue(question, answers, tl) {
+  const value = answers?.[question.id];
   if (value === undefined || value === null || value === '') return '—';
   if (CHOICE_TYPES.includes(question.type)) {
     return (Array.isArray(value) ? value : [value])
-      .map((id) => tl(question.options.find((o) => o.id === id)?.label) || id)
+      .map((id) => {
+        const label = tl(question.options.find((o) => o.id === id)?.label) || id;
+        const other = id === OTHER_ID && answers[otherKey(question.id)];
+        return other ? `${label}: ${other}` : label;
+      })
       .join(', ');
   }
   if (question.type === 'rating') return `${'★'.repeat(value)} ${value}/${rangeOf(question).max}`;

@@ -23,7 +23,7 @@ export default function Responses() {
   const surveyState = useAsync(() => surveyApi.getAdmin(surveyId), [surveyId]);
   const responsesState = useAsync(() => responseApi.list(surveyId, { page, pageSize: PAGE_SIZE }), [surveyId, page]);
 
-  const formatAnswer = (question, value) => formatAnswerValue(question, value, tl);
+  const formatAnswer = (question, answers) => formatAnswerValue(question, answers, tl);
 
   async function remove(responseId) {
     if (!window.confirm(t('responses.deleteConfirm'))) return;
@@ -139,7 +139,7 @@ export default function Responses() {
                             {result !== undefined && (
                               <Icon name={result ? 'check' : 'x'} size={13} strokeWidth={3} />
                             )}
-                            {formatAnswer(question, response.answers[question.id])}
+                            {formatAnswer(question, response.answers)}
                           </span>
                         </td>
                       );

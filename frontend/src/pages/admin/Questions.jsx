@@ -12,7 +12,15 @@ import ScaleInput from '../../components/survey/ScaleInput.jsx';
 import TypePicker from '../../components/survey/TypePicker.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { useLanguage } from '../../hooks/useLanguage.js';
-import { CHOICE_TYPES, DEFAULT_SETTINGS, OPTION_TYPES, range, TYPE_ICONS } from '../../questionTypes.js';
+import {
+  CHOICE_TYPES,
+  DEFAULT_SETTINGS,
+  OPTION_TYPES,
+  OTHER_ID,
+  OTHER_TYPES,
+  range,
+  TYPE_ICONS,
+} from '../../questionTypes.js';
 import { questionApi, surveyApi } from '../../services/surveyService.js';
 
 let draftKey = 0;
@@ -20,7 +28,9 @@ const blankOption = () => ({ key: `new-${++draftKey}`, id: undefined, en: '', km
 
 function toDraft(question) {
   const type = question?.type || 'checkbox';
-  const hasCustomOptions = question && OPTION_TYPES.includes(type) && question.options.length;
+  // "Other" is shown from settings.allowOther, not edited as an option row.
+  const ownOptions = question?.options.filter((o) => o.id !== OTHER_ID) ?? [];
+  const hasCustomOptions = question && OPTION_TYPES.includes(type) && ownOptions.length;
   const correct = new Set(question?.settings?.correct ?? []);
   return {
     textEn: question?.text.en || '',
@@ -28,7 +38,7 @@ function toDraft(question) {
     type,
     isRequired: question?.isRequired ?? false,
     options: hasCustomOptions
-      ? question.options.map((o) => ({
+      ? ownOptions.map((o) => ({
           key: o.id,
           id: o.id,
           en: o.label.en || '',
@@ -221,6 +231,8 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
   const isNew = !question;
   const fieldId = `q-${question?.id ?? 'new'}`;
   const hasOptions = OPTION_TYPES.includes(draft.type);
+  const canHaveOther = OTHER_TYPES.includes(draft.type);
+  const showOther = canHaveOther && Boolean(draft.settings.allowOther);
 
   const set = (patch) => setDraft((prev) => ({ ...prev, ...patch }));
   const setSettings = (patch) => set({ settings: { ...draft.settings, ...patch } });
@@ -483,9 +495,30 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
               />
             </div>
           ))}
-          <Button size="sm" variant="ghost" icon="plus" onClick={() => set({ options: [...draft.options, blankOption()] })}>
-            {t('questions.addOption')}
-          </Button>
+          {showOther && (
+            <div className="options-editor__row options-editor__row--other">
+              <span className={`choice__box choice__box--${draft.type}`} aria-hidden="true" />
+              <span className="options-editor__other">{t('questions.otherPlaceholder')}</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                icon="x"
+                title={t('questions.removeOther')}
+                aria-label={t('questions.removeOther')}
+                onClick={() => setSettings({ allowOther: false })}
+              />
+            </div>
+          )}
+          <div className="options-editor__add">
+            <Button size="sm" variant="ghost" icon="plus" onClick={() => set({ options: [...draft.options, blankOption()] })}>
+              {t('questions.addOption')}
+            </Button>
+            {canHaveOther && !showOther && (
+              <Button size="sm" variant="ghost" icon="plus" onClick={() => setSettings({ allowOther: true })}>
+                {t('questions.addOther')}
+              </Button>
+            )}
+          </div>
         </fieldset>
       )}
 

@@ -2,7 +2,7 @@ import { Question } from '../models/Question.js';
 import { Response } from '../models/Response.js';
 import { Survey } from '../models/Survey.js';
 import { ApiError } from '../utils/ApiError.js';
-import { CHOICE_TYPES, RANGE_TYPES, rangeOf } from '../validators/questionTypes.js';
+import { CHOICE_TYPES, RANGE_TYPES, otherKey, rangeOf } from '../validators/questionTypes.js';
 import { cleanRespondentName, validateAnswers } from '../validators/responseValidator.js';
 import { formatAnswer, notifyNewResponse } from './notificationService.js';
 import { verifyRespondentToken } from './respondentAuthService.js';
@@ -111,10 +111,14 @@ export async function buildReport(surveyId) {
       const graded = isGraded(question)
         ? { correctCount: values.filter(({ value }) => isCorrect(question, value)).length }
         : {};
+      const otherAnswers = responses
+        .map((response) => ({ value: response.answers[otherKey(question.id)], createdAt: response.createdAt }))
+        .filter(({ value }) => value);
       return {
         ...base,
         ...graded,
         options: question.options.map((option) => ({ ...option, count: counts[option.id] })),
+        ...(otherAnswers.length && { otherAnswers: otherAnswers.slice(0, 50) }),
       };
     }
 
@@ -184,7 +188,7 @@ export async function buildCsv(surveyId, lang = 'en') {
       response.respondentName || '',
       response.respondentEmail || '',
       ...(scoring ? [`${scoring.score}/${scoring.maxScore}`] : []),
-      ...survey.questions.map((q) => formatAnswer(q, response.answers[q.id], lang).replace(/, /g, '; ')),
+      ...survey.questions.map((q) => formatAnswer(q, response.answers, lang).replace(/, /g, '; ')),
     ];
   });
 

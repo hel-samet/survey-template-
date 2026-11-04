@@ -1,5 +1,5 @@
 import { env } from '../config/env.js';
-import { CHOICE_TYPES, rangeOf } from '../validators/questionTypes.js';
+import { CHOICE_TYPES, OTHER_ID, otherKey, rangeOf } from '../validators/questionTypes.js';
 import { getSettings, sendMessage } from './telegramService.js';
 
 const TELEGRAM_MESSAGE_LIMIT = 4096;
@@ -9,7 +9,9 @@ const escapeHtml = (value) =>
 
 const label = (localized) => localized?.en || localized?.km || '';
 
-export function formatAnswer(question, value, lang = 'en') {
+// `answers` is the whole response's answers object; it holds the "Other" text next to the choice.
+export function formatAnswer(question, answers, lang = 'en') {
+  const value = answers?.[question.id];
   if (value === undefined || value === null) return '';
 
   if (CHOICE_TYPES.includes(question.type)) {
@@ -17,7 +19,9 @@ export function formatAnswer(question, value, lang = 'en') {
     return ids
       .map((id) => {
         const option = question.options.find((o) => o.id === id);
-        return option ? option.label[lang] || label(option.label) : id;
+        const text = option ? option.label[lang] || label(option.label) : id;
+        const other = id === OTHER_ID && answers[otherKey(question.id)];
+        return other ? `${text}: ${other}` : text;
       })
       .join(', ');
   }
@@ -40,7 +44,7 @@ export function formatResponseMessage(survey, response) {
   }
 
   for (const question of survey.questions) {
-    const answer = formatAnswer(question, response.answers[question.id]);
+    const answer = formatAnswer(question, response.answers);
     if (!answer) continue;
     lines.push(`<b>${escapeHtml(label(question.text))}</b>`, `• ${escapeHtml(answer)}`, '');
   }

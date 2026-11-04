@@ -1,5 +1,5 @@
 import { useLanguage } from '../../hooks/useLanguage.js';
-import { CHOICE_TYPES, range, rangeOf, TYPE_ICONS } from '../../questionTypes.js';
+import { CHOICE_TYPES, OTHER_ID, range, rangeOf, TYPE_ICONS } from '../../questionTypes.js';
 import Icon from '../common/Icon.jsx';
 
 // Compact, read-only picture of how a question looks to respondents (used in the builder list).
@@ -19,7 +19,7 @@ export default function QuestionPreview({ question }) {
             ) : (
               <span className={`choice__box choice__box--${box}`} aria-hidden="true" />
             )}
-            {tl(option.label)}
+            {option.id === OTHER_ID ? t('questions.otherPlaceholder') : tl(option.label)}
             {correct.has(option.id) && (
               <span className="correct-tag">
                 <Icon name="check" size={12} strokeWidth={3} />

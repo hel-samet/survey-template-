@@ -1,5 +1,5 @@
 import { ApiError } from '../utils/ApiError.js';
-import { CHOICE_TYPES, RANGE_TYPES, TEXT_LIMITS, rangeOf } from './questionTypes.js';
+import { CHOICE_TYPES, OTHER_ID, RANGE_TYPES, TEXT_LIMITS, otherKey, rangeOf } from './questionTypes.js';
 
 const MAX_NAME_LENGTH = 120;
 
@@ -85,7 +85,14 @@ export function validateAnswers(questions, rawAnswers) {
     }
 
     try {
-      answers[question.id] = cleanAnswer(question, raw);
+      const answer = cleanAnswer(question, raw);
+      answers[question.id] = answer;
+      if ([answer].flat().includes(OTHER_ID)) {
+        const rawOther = rawAnswers[otherKey(question.id)];
+        const other = typeof rawOther === 'string' ? rawOther.trim().slice(0, TEXT_LIMITS.other) : '';
+        if (!other) throw new InvalidAnswer('Please type your "Other" answer');
+        answers[otherKey(question.id)] = other;
+      }
     } catch (err) {
       if (!(err instanceof InvalidAnswer)) throw err;
       errors[question.id] = err.message;

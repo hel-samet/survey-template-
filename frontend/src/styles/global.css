@@ -2920,3 +2920,46 @@ select.field__control {
     grid-template-columns: auto minmax(0, 1fr) auto auto;
   }
 }
+
+/* ==========================================================================
+   "Other" choice with a free-text answer (checkbox / multiple choice)
+   ========================================================================== */
+.choice-other {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.choice-other__input {
+  width: calc(100% - 2.6rem);
+  margin-left: 2.6rem;
+}
+
+@media (max-width: 600px) {
+  .choice-other__input {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+.options-editor__other {
+  grid-column: 2 / -2;
+  padding: 0.7rem 0.85rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.options-editor__add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.report__subtitle {
+  margin: 1.1rem 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}

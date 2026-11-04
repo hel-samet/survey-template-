@@ -134,6 +134,19 @@ function ReportBody({ question, totalResponses }) {
             value: option.count,
           }))}
         />
+        {question.otherAnswers && (
+          <>
+            <h4 className="report__subtitle">{t('reports.otherAnswers')}</h4>
+            <ul className="list">
+              {question.otherAnswers.map((answer, i) => (
+                <li key={i} className="list__item">
+                  <span>{answer.value}</span>
+                  <span className="small muted nowrap">{formatDateTime(answer.createdAt, lang)}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </>
     );
   }

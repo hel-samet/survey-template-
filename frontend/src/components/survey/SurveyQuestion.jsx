@@ -24,15 +24,32 @@ const INPUTS = {
   date: ['date', undefined, 'off', null],
 };
 
-function AnswerInput({ question, name, value, onChange }) {
+function AnswerInput({ question, name, value, onChange, otherText, onOtherChange }) {
   const { t, tl } = useLanguage();
   const label = tl(question.text);
 
   switch (question.type) {
     case 'checkbox':
-      return <CheckboxGroup options={question.options} value={value || []} onChange={onChange} />;
+      return (
+        <CheckboxGroup
+          options={question.options}
+          value={value || []}
+          onChange={onChange}
+          otherText={otherText}
+          onOtherChange={onOtherChange}
+        />
+      );
     case 'radio':
-      return <RadioGroup name={name} options={question.options} value={value} onChange={onChange} />;
+      return (
+        <RadioGroup
+          name={name}
+          options={question.options}
+          value={value}
+          onChange={onChange}
+          otherText={otherText}
+          onOtherChange={onOtherChange}
+        />
+      );
     case 'yesno':
       return <RadioGroup name={name} options={question.options} value={value} onChange={onChange} layout="row" />;
     case 'dropdown':
@@ -98,7 +115,17 @@ function AnswerInput({ question, name, value, onChange }) {
   }
 }
 
-export default function SurveyQuestion({ question, index, value, onChange, error, answered = false }) {
+// otherText / onOtherChange: the typed answer for the "Other" choice (checkbox and multiple choice).
+export default function SurveyQuestion({
+  question,
+  index,
+  value,
+  onChange,
+  otherText,
+  onOtherChange,
+  error,
+  answered = false,
+}) {
   const { t, tl } = useLanguage();
   const name = `q-${question.id}`;
   const hint = HINTS[question.type] ? t(HINTS[question.type]) : null;
@@ -128,7 +155,14 @@ export default function SurveyQuestion({ question, index, value, onChange, error
       {hint && <p className="question__hint">{hint}</p>}
 
       <div className="question__answer">
-        <AnswerInput question={question} name={name} value={value} onChange={onChange} />
+        <AnswerInput
+          question={question}
+          name={name}
+          value={value}
+          onChange={onChange}
+          otherText={otherText}
+          onOtherChange={onOtherChange}
+        />
       </div>
 
       {error && (

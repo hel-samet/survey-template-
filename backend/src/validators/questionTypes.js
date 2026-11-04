@@ -40,7 +40,15 @@ export const YES_NO_OPTIONS = [
   { id: 'no', label: { en: 'No', km: 'ទេ' } },
 ];
 
-export const TEXT_LIMITS = { text: 500, paragraph: 2000, email: 254, phone: 30 };
+export const TEXT_LIMITS = { text: 500, paragraph: 2000, email: 254, phone: 30, other: 500 };
+
+// Checkbox and multiple-choice questions can offer "Other" with a free-text answer (settings.allowOther).
+// The server appends OTHER_OPTION to their options, so counts, reports and validation treat it like any
+// option; the typed text is stored next to the answer in answers["<questionId>:other"].
+export const OTHER_TYPES = ['checkbox', 'radio'];
+export const OTHER_ID = '__other';
+export const OTHER_OPTION = { id: OTHER_ID, label: { en: 'Other', km: 'ផ្សេងៗ' } };
+export const otherKey = (questionId) => `${questionId}:other`;
 
 // Inclusive answer range for rating / scale questions.
 export function rangeOf(question) {

@@ -9,7 +9,7 @@ import SurveyQuestion from '../components/survey/SurveyQuestion.jsx';
 import SurveySubmit from '../components/survey/SurveySubmit.jsx';
 import { useAsync } from '../hooks/useAsync.js';
 import { useLanguage } from '../hooks/useLanguage.js';
-import { formatError } from '../questionTypes.js';
+import { formatError, OTHER_ID, otherKey } from '../questionTypes.js';
 import { googleAuth, isGoogleSignInConfigured } from '../services/googleAuth.js';
 import { coverUrl, responseApi, surveyApi } from '../services/surveyService.js';
 
@@ -131,8 +131,9 @@ export default function SurveyPage() {
   const { questions } = survey;
   const answeredCount = questions.filter((q) => hasValue(answers[q.id])).length;
 
-  const setAnswer = (questionId, value) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+  // `key` is a question ID, or otherKey(questionId) for typed "Other" text; errors are keyed by question ID.
+  const setAnswer = (key, value, questionId = key) => {
+    setAnswers((prev) => ({ ...prev, [key]: value }));
     if (errors[questionId]) {
       setErrors(({ [questionId]: _removed, ...rest }) => rest);
     }
@@ -147,6 +148,8 @@ export default function SurveyPage() {
       const value = answers[question.id];
       if (question.isRequired && !hasValue(value)) {
         problems[question.id] = t('survey.errors.required');
+      } else if ([value].flat().includes(OTHER_ID) && !answers[otherKey(question.id)]?.trim()) {
+        problems[question.id] = t('survey.errors.otherRequired');
       } else {
         const formatKey = formatError(question, value);
         if (formatKey) problems[question.id] = t(formatKey);
@@ -186,10 +189,9 @@ export default function SurveyPage() {
           Object.fromEntries(
             Object.entries(err.details).map(([key, message]) => {
               if (key === NAME_KEY) return [key, t('survey.errors.nameRequired')];
-              return [
-                key,
-                message === 'This question is required' ? t('survey.errors.required') : t('survey.errors.invalid'),
-              ];
+              if (message === 'This question is required') return [key, t('survey.errors.required')];
+              if (message.includes('"Other"')) return [key, t('survey.errors.otherRequired')];
+              return [key, t('survey.errors.invalid')];
             }),
           ),
         );
@@ -249,6 +251,8 @@ export default function SurveyPage() {
               answered={hasValue(answers[question.id])}
               error={errors[question.id]}
               onChange={(value) => setAnswer(question.id, value)}
+              otherText={answers[otherKey(question.id)]}
+              onOtherChange={(text) => setAnswer(otherKey(question.id), text, question.id)}
             />
           ))}
 

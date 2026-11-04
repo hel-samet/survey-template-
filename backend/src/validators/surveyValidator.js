@@ -1,6 +1,14 @@
 import crypto from 'node:crypto';
 import { ApiError } from '../utils/ApiError.js';
-import { CHOICE_TYPES, OPTION_TYPES, QUESTION_TYPES, YES_NO_OPTIONS } from './questionTypes.js';
+import {
+  CHOICE_TYPES,
+  OPTION_TYPES,
+  OTHER_ID,
+  OTHER_OPTION,
+  OTHER_TYPES,
+  QUESTION_TYPES,
+  YES_NO_OPTIONS,
+} from './questionTypes.js';
 
 export const LANGUAGES = ['en', 'km'];
 export { QUESTION_TYPES };
@@ -35,7 +43,8 @@ function validateOptions(options) {
   }
 
   const seen = new Set();
-  return options.map((option, index) => {
+  // "Other" is managed by settings.allowOther, never written as an option by the client.
+  return options.filter((option) => option?.id !== OTHER_ID).map((option, index) => {
     const label = localized(option?.label, { field: `options[${index}].label`, required: true, max: 300 });
     let id = typeof option?.id === 'string' && /^[\w-]{1,40}$/.test(option.id) ? option.id : randomOptionId();
     while (seen.has(id)) id = randomOptionId();
@@ -134,13 +143,15 @@ function scoringSettings(type, settings, options) {
   let correct = flagged
     ? options.filter((o) => o.correct).map((o) => o.id)
     : (Array.isArray(settings.correct) ? settings.correct : []).map(String).filter((id) => ids.has(id));
+  correct = correct.filter((id) => id !== OTHER_ID); // a free-text answer can't be graded
   if (type !== 'checkbox') correct = correct.slice(0, 1);
   return { points: cleanPoints(settings.points), correct: [...new Set(correct)] };
 }
 
 function normalizeSettings(type, settings = {}, options = []) {
   if (CHOICE_TYPES.includes(type)) {
-    return scoringSettings(type, settings, options);
+    const allowOther = options.some((o) => o.id === OTHER_ID);
+    return { ...scoringSettings(type, settings, options), ...(allowOther && { allowOther: true }) };
   }
   if (type === 'rating') {
     return { max: intIn(settings.max, 3, 10, 5) };
@@ -160,12 +171,19 @@ function normalizeSettings(type, settings = {}, options = []) {
 
 // Gives every type a consistent shape: custom options only where the admin writes them,
 // fixed Yes/No options, and settings cleaned to what the type understands.
+// Stored options may already contain "Other" (partial updates reuse them), so it is stripped and re-added.
 export function normalizeQuestion(type, { options = [], settings = {} } = {}) {
-  if (OPTION_TYPES.includes(type) && options.length < 2) {
+  const ownOptions = options.filter((o) => o.id !== OTHER_ID);
+  if (OPTION_TYPES.includes(type) && ownOptions.length < 2) {
     throw new ApiError(400, 'Checkbox, multiple choice and dropdown questions need at least 2 options');
   }
 
-  const finalOptions = OPTION_TYPES.includes(type) ? options : type === 'yesno' ? YES_NO_OPTIONS : [];
+  const allowOther = OTHER_TYPES.includes(type) && Boolean(settings?.allowOther);
+  const finalOptions = OPTION_TYPES.includes(type)
+    ? [...ownOptions, ...(allowOther ? [OTHER_OPTION] : [])]
+    : type === 'yesno'
+      ? YES_NO_OPTIONS
+      : [];
   return {
     options: finalOptions.map(({ id, label }) => ({ id, label })),
     settings: normalizeSettings(type, settings, finalOptions),
