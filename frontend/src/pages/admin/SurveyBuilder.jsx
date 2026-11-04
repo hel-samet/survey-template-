@@ -98,7 +98,7 @@ export default function SurveyBuilder() {
       {isEdit && <SurveyTabs surveyId={id} />}
 
       <form className="card form" onSubmit={handleSubmit}>
-        <div className="grid grid--2">
+        <div className="grid grid--pairs">
           <Input label={t('builder.titleEn')} value={form.titleEn} maxLength={200} onChange={update('titleEn')} />
           <Input
             label={t('builder.titleKm')}

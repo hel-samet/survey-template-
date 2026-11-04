@@ -273,7 +273,7 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
 
   return (
     <form className="card form question-editor" onSubmit={handleSubmit}>
-      <div className="grid grid--2">
+      <div className="grid question-editor__head">
         <Input
           label={t('questions.textEn')}
           value={draft.textEn}
@@ -288,13 +288,12 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
           maxLength={1000}
           onChange={(e) => set({ textKm: e.target.value })}
         />
-      </div>
-
-      <div className="field">
-        <span className="field__label" id={`${fieldId}-label`}>
-          {t('questions.type')}
-        </span>
-        <TypePicker id={fieldId} value={draft.type} onChange={changeType} />
+        <div className="field">
+          <span className="field__label" id={`${fieldId}-label`}>
+            {t('questions.type')}
+          </span>
+          <TypePicker id={fieldId} value={draft.type} onChange={changeType} />
+        </div>
       </div>
 
       <Checkbox
