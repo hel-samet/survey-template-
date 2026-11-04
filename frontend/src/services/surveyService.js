@@ -14,6 +14,7 @@ export const surveyApi = {
   remove: (id) => api.delete(`/surveys/${id}`),
   setCover: (id, blob) => api.putBlob(`/surveys/${id}/cover`, blob).then(unwrap),
   removeCover: (id) => api.delete(`/surveys/${id}/cover`).then(unwrap),
+  live: (id) => api.get(`/surveys/${id}/live`).then(unwrap),
 };
 
 // Public URL of a survey's cover image, or null. The version query busts the cache after a new upload.
@@ -44,12 +45,13 @@ export const responseApi = {
   report: (surveyId) => api.get(`/responses/report/${surveyId}`).then(unwrap),
   remove: (id) => api.delete(`/responses/${id}`),
 
-  async downloadCsv(surveyId, lang = 'en') {
-    const blob = await request(`/responses/export/${surveyId}?lang=${lang}`, { responseType: 'blob' });
+  // format: 'xlsx' (styled Excel workbook) or 'csv' (plain text)
+  async download(surveyId, lang = 'en', format = 'xlsx') {
+    const blob = await request(`/responses/export/${surveyId}?lang=${lang}&format=${format}`, { responseType: 'blob' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `survey-${surveyId}-responses.csv`;
+    link.download = `survey-${surveyId}-responses.${format}`;
     document.body.appendChild(link);
     link.click();
     link.remove();

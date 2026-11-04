@@ -93,7 +93,7 @@ Question body:
 | POST | `/responses` | Submit answers (public, 10 / minute per IP) |
 | GET 🔒 | `/responses?surveyId=1&page=1&pageSize=20` | Paginated responses, newest first |
 | GET 🔒 | `/responses/report/:surveyId` | Aggregated counts per option, latest text answers |
-| GET 🔒 | `/responses/export/:surveyId?lang=en` | CSV download (`lang` = `en` or `km` for labels) |
+| GET 🔒 | `/responses/export/:surveyId?lang=en&format=xlsx` | Download responses. `format=xlsx`: styled Excel workbook (Responses + Summary sheets); omit for CSV. `lang` = `en` or `km` for labels |
 | DELETE 🔒 | `/responses/:id` | Delete a response |
 
 Submit body:

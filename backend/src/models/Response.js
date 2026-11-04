@@ -66,6 +66,26 @@ export const Response = {
     return rows;
   },
 
+  async recentBySurvey(surveyId, limit = 8) {
+    const { rows } = await query(`${SELECT} WHERE survey_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2`, [
+      surveyId,
+      limit,
+    ]);
+    return rows;
+  },
+
+  // Submissions in the last hour, since local midnight in `timezone`, and in total.
+  async countsSince(surveyId, timezone) {
+    const { rows } = await query(
+      `SELECT COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '1 hour')::int AS "lastHour",
+              COUNT(*) FILTER (WHERE created_at >= date_trunc('day', NOW() AT TIME ZONE $2) AT TIME ZONE $2)::int AS today,
+              COUNT(*)::int AS total
+         FROM responses WHERE survey_id = $1`,
+      [surveyId, timezone],
+    );
+    return rows[0];
+  },
+
   async countBySurvey(surveyId) {
     const { rows } = await query('SELECT COUNT(*)::int AS count FROM responses WHERE survey_id = $1', [surveyId]);
     return rows[0].count;

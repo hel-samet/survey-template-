@@ -8,6 +8,7 @@ import SurveyPage from './pages/SurveyPage.jsx';
 import Dashboard from './pages/admin/Dashboard.jsx';
 import Login from './pages/admin/Login.jsx';
 import Questions from './pages/admin/Questions.jsx';
+import Live from './pages/admin/Live.jsx';
 import Reports from './pages/admin/Reports.jsx';
 import Responses from './pages/admin/Responses.jsx';
 import SurveyBuilder from './pages/admin/SurveyBuilder.jsx';
@@ -25,6 +26,8 @@ export default function App() {
       </Route>
 
       <Route path="admin/login" element={<Login />} />
+      {/* Full-screen live monitor, outside the admin layout; the Live tab opens it in a new browser tab */}
+      <Route path="admin/surveys/:id/live" element={<Live />} />
 
       <Route path="admin" element={<AdminLayout />}>
         <Route index element={<Dashboard />} />

@@ -47,11 +47,11 @@ export default function Responses() {
     }
   }
 
-  async function exportCsv() {
-    setExporting(true);
+  async function exportFile(format) {
+    setExporting(format);
     setActionError(null);
     try {
-      await responseApi.downloadCsv(surveyId, lang);
+      await responseApi.download(surveyId, lang, format);
     } catch (err) {
       setActionError(err);
     } finally {
@@ -75,9 +75,25 @@ export default function Responses() {
         backTo="/admin/surveys"
         backLabel={t('surveys.title')}
         actions={
-          <Button variant="secondary" icon="download" loading={exporting} disabled={!meta?.total} onClick={exportCsv}>
-            {t('responses.export')}
-          </Button>
+          <>
+            <Button
+              variant="secondary"
+              icon="download"
+              loading={exporting === 'xlsx'}
+              disabled={!meta?.total || Boolean(exporting)}
+              onClick={() => exportFile('xlsx')}
+            >
+              {t('responses.exportExcel')}
+            </Button>
+            <Button
+              variant="ghost"
+              loading={exporting === 'csv'}
+              disabled={!meta?.total || Boolean(exporting)}
+              onClick={() => exportFile('csv')}
+            >
+              {t('responses.exportCsv')}
+            </Button>
+          </>
         }
       />
       <SurveyTabs surveyId={surveyId} />

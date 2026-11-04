@@ -19,7 +19,9 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({ origin: env.corsOrigins.includes('*') ? '*' : env.corsOrigins }));
 app.use(express.json({ limit: '1mb' }));
-app.use(morgan(isProduction ? 'combined' : 'dev'));
+// Live-status heartbeats and polling arrive every few seconds; log them only when they fail.
+const isLiveTraffic = (req, res) => res.statusCode < 400 && /^\/api\/surveys\/\d+\/(presence|live)\b/.test(req.originalUrl);
+app.use(morgan(isProduction ? 'combined' : 'dev', { skip: isLiveTraffic }));
 
 app.get('/api/health', async (req, res) => {
   try {

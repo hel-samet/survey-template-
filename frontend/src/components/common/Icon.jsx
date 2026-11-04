@@ -33,6 +33,8 @@ const PATHS = {
   checkSquare: 'M4 4h16v16H4zM8 12l3 3 5-6',
   circleDot: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6',
   image: 'M3 5h18v14H3zM3 16l5-5 5 5M13 14l3-3 5 5M15.5 8.5h.01',
+  maximize: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
+  minimize: 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5',
   chevronDown: 'M4 5h16v14H4zM9 11l3 3 3-3',
   thumbsUp: 'M7 11v9H4v-9zM7 11l4-8a2 2 0 0 1 3 2l-1 4h5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 16.8 20H7',
   star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z',

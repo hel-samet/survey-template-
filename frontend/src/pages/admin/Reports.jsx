@@ -19,11 +19,11 @@ export default function Reports() {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
 
-  async function exportCsv() {
-    setExporting(true);
+  async function exportFile(format) {
+    setExporting(format);
     setExportError(null);
     try {
-      await responseApi.downloadCsv(surveyId, lang);
+      await responseApi.download(surveyId, lang, format);
     } catch (err) {
       setExportError(err);
     } finally {
@@ -44,9 +44,25 @@ export default function Reports() {
         backTo="/admin/surveys"
         backLabel={t('surveys.title')}
         actions={
-          <Button variant="secondary" icon="download" loading={exporting} disabled={!totalResponses} onClick={exportCsv}>
-            {t('responses.export')}
-          </Button>
+          <>
+            <Button
+              variant="secondary"
+              icon="download"
+              loading={exporting === 'xlsx'}
+              disabled={!totalResponses || Boolean(exporting)}
+              onClick={() => exportFile('xlsx')}
+            >
+              {t('responses.exportExcel')}
+            </Button>
+            <Button
+              variant="ghost"
+              loading={exporting === 'csv'}
+              disabled={!totalResponses || Boolean(exporting)}
+              onClick={() => exportFile('csv')}
+            >
+              {t('responses.exportCsv')}
+            </Button>
+          </>
         }
       />
       <SurveyTabs surveyId={surveyId} />

@@ -23,6 +23,9 @@ import {
 } from '../../questionTypes.js';
 import { questionApi, surveyApi } from '../../services/surveyService.js';
 
+// Matches MAX_POINTS in backend/src/validators/surveyValidator.js.
+const MAX_POINTS = 1000;
+
 let draftKey = 0;
 const blankOption = () => ({ key: `new-${++draftKey}`, id: undefined, en: '', km: '', correct: false });
 
@@ -254,6 +257,12 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
       ),
     });
   const isScorable = CHOICE_TYPES.includes(draft.type);
+  const points = Number(draft.settings.points) || 0;
+  const isScored = points > 0;
+  const hasCorrect =
+    draft.type === 'yesno' ? Boolean(draft.settings.correct?.length) : draft.options.some((o) => o.correct);
+  const needsCorrect = isScored && !hasCorrect;
+  const setPoints = (value) => setSettings({ points: Math.min(MAX_POINTS, Math.max(0, value)) });
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -318,22 +327,59 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
       {draft.type === 'yesno' && <p className="note">{t('questions.yesnoNote')}</p>}
 
       {isScorable && (
-        <div className="scoring-editor">
-          <label className="field scoring-editor__points">
-            <span className="field__label">
-              <Icon name="award" size={15} /> {t('questions.points')}
+        <div className={`scoring-editor ${isScored ? 'is-on' : ''}`}>
+          <div className="scoring-editor__head">
+            <span className="scoring-editor__icon" aria-hidden="true">
+              <Icon name="award" size={18} />
             </span>
-            <input
-              type="number"
-              className="field__control"
-              min={0}
-              max={1000}
-              step="0.5"
-              value={draft.settings.points ?? 0}
-              onChange={(e) => setSettings({ points: Number(e.target.value) })}
-            />
-          </label>
-          {draft.type === 'yesno' ? (
+            <div className="scoring-editor__text">
+              <span className="scoring-editor__title" id={`${fieldId}-points`}>
+                {t('questions.points')}
+              </span>
+              <span className={`scoring-editor__hint ${needsCorrect ? 'is-warning' : ''}`}>
+                {!isScored
+                  ? t('questions.pointsOff')
+                  : needsCorrect
+                    ? t('questions.noCorrectWarning')
+                    : draft.type === 'yesno'
+                      ? t('questions.pointsYesNo')
+                      : t(draft.type === 'checkbox' ? 'questions.markCorrectMany' : 'questions.markCorrectOne')}
+              </span>
+            </div>
+            <div className="stepper" role="group" aria-labelledby={`${fieldId}-points`}>
+              <button
+                type="button"
+                className="stepper__btn"
+                aria-label={t('questions.pointsLess')}
+                disabled={points <= 0}
+                onClick={() => setPoints(Math.ceil(points) - 1)}
+              >
+                −
+              </button>
+              <input
+                type="number"
+                className="stepper__input"
+                min={0}
+                max={MAX_POINTS}
+                step="0.5"
+                inputMode="decimal"
+                aria-labelledby={`${fieldId}-points`}
+                value={draft.settings.points ?? 0}
+                onChange={(e) => setPoints(e.target.value === '' ? 0 : Number(e.target.value))}
+                onFocus={(e) => e.target.select()}
+              />
+              <button
+                type="button"
+                className="stepper__btn"
+                aria-label={t('questions.pointsMore')}
+                disabled={points >= MAX_POINTS}
+                onClick={() => setPoints(Math.floor(points) + 1)}
+              >
+                +
+              </button>
+            </div>
+          </div>
+          {draft.type === 'yesno' && isScored && (
             <div className="field">
               <span className="field__label">{t('questions.correctAnswer')}</span>
               <div className="segmented" role="radiogroup">
@@ -359,10 +405,6 @@ function QuestionEditor({ question, surveyId, onSaved, onCancel }) {
                 })}
               </div>
             </div>
-          ) : (
-            <p className="scoring-editor__hint">
-              {t(draft.type === 'checkbox' ? 'questions.markCorrectMany' : 'questions.markCorrectOne')}
-            </p>
           )}
         </div>
       )}

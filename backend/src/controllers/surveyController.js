@@ -1,4 +1,5 @@
 import { Survey } from '../models/Survey.js';
+import { getLive, parsePresence, recordPresence } from '../services/liveService.js';
 import { getDashboardStats, getPublicSurvey as loadPublicSurvey, getSurveyWithQuestions } from '../services/surveyService.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -55,6 +56,25 @@ export const deleteCover = asyncHandler(async (req, res) => {
   const survey = await Survey.setCover(parseId(req.params.id), { data: null });
   if (!survey) throw new ApiError(404, 'Survey not found');
   res.json({ data: survey });
+});
+
+// Heartbeat from an open survey page. Sent as text/plain (also via navigator.sendBeacon) to avoid a CORS preflight.
+export const postPresence = asyncHandler(async (req, res) => {
+  const surveyId = parseId(req.params.id);
+  const presence = parsePresence(req.body);
+  const survey = await Survey.findById(surveyId);
+  if (!survey || !survey.isActive) throw new ApiError(404, 'Survey not found');
+  recordPresence(surveyId, presence, req.get('User-Agent'));
+  res.status(204).end();
+});
+
+export const getLiveStatus = asyncHandler(async (req, res) => {
+  const surveyId = parseId(req.params.id);
+  const survey = await Survey.findById(surveyId);
+  if (!survey) throw new ApiError(404, 'Survey not found');
+  res.set('Cache-Control', 'no-store');
+  const info = { id: survey.id, title: survey.title, isActive: survey.isActive, questionCount: survey.questionCount };
+  res.json({ data: { survey: info, ...(await getLive(surveyId)) } });
 });
 
 export const deleteSurvey = asyncHandler(async (req, res) => {

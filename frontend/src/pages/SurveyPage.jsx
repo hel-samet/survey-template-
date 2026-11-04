@@ -9,6 +9,7 @@ import SurveyQuestion from '../components/survey/SurveyQuestion.jsx';
 import SurveySubmit from '../components/survey/SurveySubmit.jsx';
 import { useAsync } from '../hooks/useAsync.js';
 import { useLanguage } from '../hooks/useLanguage.js';
+import { usePresence } from '../hooks/usePresence.js';
 import { formatError, OTHER_ID, otherKey } from '../questionTypes.js';
 import { googleAuth, isGoogleSignInConfigured } from '../services/googleAuth.js';
 import { coverUrl, responseApi, surveyApi } from '../services/surveyService.js';
@@ -45,6 +46,17 @@ export default function SurveyPage() {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Live status for the admin: only while the answer form itself is on screen.
+  const formVisible =
+    Boolean(survey) &&
+    (!needsLogin || (isGoogleSignInConfigured && Boolean(user) && !status.loading && !status.submitted));
+  const presence = usePresence(survey?.id, {
+    enabled: formVisible,
+    name: respondentName,
+    answered: survey ? survey.questions.filter((q) => hasValue(answers[q.id])).length : 0,
+    total: survey?.questions.length ?? 0,
+  });
 
   // Once signed in, ask the server whether this Google account has already answered.
   useEffect(() => {
@@ -174,6 +186,7 @@ export default function SurveyPage() {
         respondentName: respondentName.trim(),
         respondentToken: needsLogin ? await googleAuth.getIdToken() : undefined,
       });
+      presence.markSubmitted();
       navigate('/success', { replace: true, state: { title: survey.title, score: result.score } });
     } catch (err) {
       if (err.status === 409) {

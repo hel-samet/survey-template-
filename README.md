@@ -1,6 +1,6 @@
 # Survey Checkbox System
 
-A bilingual (English / ខ្មែរ) survey platform with checkbox, single-choice and free-text questions, an admin panel, reports, CSV export and Telegram notifications for every new response.
+A bilingual (English / ខ្មែរ) survey platform with checkbox, single-choice and free-text questions, an admin panel, reports, Excel / CSV export and Telegram notifications for every new response.
 
 | Part | Tech | Hosting |
 | --- | --- | --- |
@@ -12,7 +12,7 @@ A bilingual (English / ខ្មែរ) survey platform with checkbox, single-ch
 
 - Public survey list and survey form with progress bar and required-question validation
 - English / Khmer UI switcher; every survey, question and option can be written in both languages
-- Admin panel (single admin account, JWT auth): dashboard, survey builder, question editor with reordering, response table, per-question reports, CSV export (UTF-8, opens correctly in Excel)
+- Admin panel (single admin account, JWT auth): dashboard, survey builder, question editor with reordering, response table, per-question reports, styled Excel export (responses + summary sheets) and CSV export
 - Telegram bot notification for each submission, configured from the admin panel
 - Rate-limited submissions and login
 

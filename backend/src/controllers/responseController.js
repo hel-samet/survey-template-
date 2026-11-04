@@ -1,4 +1,5 @@
 import { Response } from '../models/Response.js';
+import { buildXlsx } from '../services/excelExportService.js';
 import { respondentTokenFrom } from '../services/respondentAuthService.js';
 import {
   buildCsv,
@@ -53,6 +54,15 @@ export const getReport = asyncHandler(async (req, res) => {
 export const exportCsv = asyncHandler(async (req, res) => {
   const surveyId = parseId(req.params.surveyId, 'surveyId');
   const lang = req.query.lang === 'km' ? 'km' : 'en';
+
+  if (req.query.format === 'xlsx') {
+    const buffer = await buildXlsx(surveyId, lang);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="survey-${surveyId}-responses.xlsx"`);
+    res.send(Buffer.from(buffer));
+    return;
+  }
+
   const csv = await buildCsv(surveyId, lang);
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
