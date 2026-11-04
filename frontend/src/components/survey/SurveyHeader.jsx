@@ -2,16 +2,21 @@ import { useLanguage } from '../../hooks/useLanguage.js';
 import Icon from '../common/Icon.jsx';
 
 // Renders the intro card plus a progress strip that sticks below the top bar while scrolling.
-export default function SurveyHeader({ title, description, answered = 0, total = 0 }) {
+// `cover` is an optional banner image URL shown across the top of the card.
+export default function SurveyHeader({ title, description, cover, answered = 0, total = 0 }) {
   const { t } = useLanguage();
   const percent = total ? Math.round((answered / total) * 100) : 0;
 
   return (
     <>
-      <header className="card survey-header">
-        <span className="survey-header__icon">
-          <Icon name="clipboard" size={24} />
-        </span>
+      <header className={`card survey-header ${cover ? 'survey-header--cover' : ''}`}>
+        {cover ? (
+          <img className="survey-header__cover" src={cover} alt="" />
+        ) : (
+          <span className="survey-header__icon">
+            <Icon name="clipboard" size={24} />
+          </span>
+        )}
         <h1 className="survey-header__title">{title}</h1>
         {description && <p className="survey-header__desc">{description}</p>}
         <p className="survey-header__note">

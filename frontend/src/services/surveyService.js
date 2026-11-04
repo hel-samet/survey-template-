@@ -1,4 +1,4 @@
-import { api, request } from './api.js';
+import { api, BASE_URL, request } from './api.js';
 
 const unwrap = (res) => res.data;
 
@@ -12,7 +12,15 @@ export const surveyApi = {
   create: (data) => api.post('/surveys', data).then(unwrap),
   update: (id, data) => api.put(`/surveys/${id}`, data).then(unwrap),
   remove: (id) => api.delete(`/surveys/${id}`),
+  setCover: (id, blob) => api.putBlob(`/surveys/${id}/cover`, blob).then(unwrap),
+  removeCover: (id) => api.delete(`/surveys/${id}/cover`).then(unwrap),
 };
+
+// Public URL of a survey's cover image, or null. The version query busts the cache after a new upload.
+export const coverUrl = (survey) =>
+  survey?.coverUpdatedAt
+    ? `${BASE_URL}/surveys/${survey.id}/cover?v=${new Date(survey.coverUpdatedAt).getTime()}`
+    : null;
 
 export const questionApi = {
   list: (surveyId) => api.get(`/questions?surveyId=${surveyId}`).then(unwrap),

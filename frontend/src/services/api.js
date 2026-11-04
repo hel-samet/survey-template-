@@ -1,4 +1,4 @@
-const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
+export const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
 const TOKEN_KEY = 'survey_admin_token';
 
 export const AUTH_LOGOUT_EVENT = 'auth:logout';
@@ -38,9 +38,11 @@ export class ApiError extends Error {
 }
 
 // `respondentToken` is a respondent's Google ID token for surveys that require sign-in.
-export async function request(path, { method = 'GET', body, responseType = 'json', respondentToken } = {}) {
+// `blob` sends a file as the raw request body (e.g. a cover image) instead of JSON.
+export async function request(path, { method = 'GET', body, blob, responseType = 'json', respondentToken } = {}) {
   const headers = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (blob) headers['Content-Type'] = blob.type;
 
   const token = respondentToken ? null : tokenStore.get();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -51,7 +53,7 @@ export async function request(path, { method = 'GET', body, responseType = 'json
     res = await fetch(`${BASE_URL}${path}`, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: blob ?? (body !== undefined ? JSON.stringify(body) : undefined),
     });
   } catch {
     throw new ApiError('Cannot reach the server. Please check your connection.', 0);
@@ -81,5 +83,6 @@ export const api = {
   get: (path, options) => request(path, options),
   post: (path, body) => request(path, { method: 'POST', body }),
   put: (path, body) => request(path, { method: 'PUT', body }),
+  putBlob: (path, blob) => request(path, { method: 'PUT', blob }),
   delete: (path) => request(path, { method: 'DELETE' }),
 };

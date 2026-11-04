@@ -100,3 +100,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_responses_one_per_user
 -- Correct answers and points live in questions.settings ({"points": 2, "correct": ["optId"]}).
 -- surveys.show_score: show respondents their score right after they submit.
 ALTER TABLE surveys ADD COLUMN IF NOT EXISTS show_score BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Cover image --------------------------------------------------------------------
+-- Banner shown at the top of the public survey. Stored in the database (not on disk)
+-- because Render's free disk is wiped on every deploy. Served by GET /api/surveys/:id/cover.
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS cover_image      BYTEA;
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS cover_image_type TEXT;
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS cover_updated_at TIMESTAMPTZ;

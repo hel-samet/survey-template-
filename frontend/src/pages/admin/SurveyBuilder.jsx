@@ -1,15 +1,19 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import Button from '../../components/common/Button.jsx';
 import Checkbox from '../../components/common/Checkbox.jsx';
 import { ErrorMessage, Loading } from '../../components/common/Feedback.jsx';
 import Input from '../../components/common/Input.jsx';
 import PageHeader from '../../components/layout/PageHeader.jsx';
 import SurveyTabs from '../../components/layout/SurveyTabs.jsx';
+import CoverPicker from '../../components/survey/CoverPicker.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { useLanguage } from '../../hooks/useLanguage.js';
 import { isGoogleSignInConfigured } from '../../services/googleAuth.js';
-import { surveyApi } from '../../services/surveyService.js';
+import { coverUrl, surveyApi } from '../../services/surveyService.js';
+
+// savedUrl: cover stored on the server. blob/preview: a newly picked image not uploaded yet.
+const NO_COVER = { savedUrl: null, blob: null, preview: null, removed: false };
 
 const EMPTY_FORM = {
   titleEn: '',
@@ -25,16 +29,19 @@ export default function SurveyBuilder() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, tl } = useLanguage();
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(location.state?.error || '');
   const [notice, setNotice] = useState('');
+  const [cover, setCover] = useState(NO_COVER);
 
   const { data: survey, loading, error: loadError } = useAsync(async () => {
     if (!isEdit) return null;
     const loaded = await surveyApi.getAdmin(id);
+    setCover({ ...NO_COVER, savedUrl: coverUrl(loaded) });
     setForm({
       titleEn: loaded.title.en || '',
       titleKm: loaded.title.km || '',
@@ -51,6 +58,25 @@ export default function SurveyBuilder() {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
     setNotice('');
   };
+
+  // Uploads or removes the cover after the survey itself is saved (a new survey needs its ID first).
+  async function saveCover(saved) {
+    if (cover.blob) return surveyApi.setCover(saved.id, cover.blob);
+    if (cover.removed && cover.savedUrl) return surveyApi.removeCover(saved.id);
+    return saved;
+  }
+
+  function selectCover(blob, preview) {
+    if (cover.preview) URL.revokeObjectURL(cover.preview);
+    setCover((prev) => ({ ...prev, blob, preview, removed: false }));
+    setNotice('');
+  }
+
+  function removeCover() {
+    if (cover.preview) URL.revokeObjectURL(cover.preview);
+    setCover((prev) => ({ ...prev, blob: null, preview: null, removed: true }));
+    setNotice('');
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -71,10 +97,19 @@ export default function SurveyBuilder() {
     setError('');
     try {
       if (isEdit) {
-        await surveyApi.update(id, payload);
+        const withCover = await saveCover(await surveyApi.update(id, payload));
+        setCover({ ...NO_COVER, savedUrl: coverUrl(withCover) });
         setNotice(t('common.saved'));
       } else {
         const created = await surveyApi.create(payload);
+        try {
+          await saveCover(created);
+        } catch (err) {
+          // The survey exists now; continue on its edit page so pressing Create again can't duplicate it.
+          setError(err.message);
+          navigate(`/admin/surveys/${created.id}/edit`, { state: { error: err.message } });
+          return;
+        }
         navigate(`/admin/surveys/${created.id}/questions`);
       }
     } catch (err) {
@@ -98,6 +133,12 @@ export default function SurveyBuilder() {
       {isEdit && <SurveyTabs surveyId={id} />}
 
       <form className="card form" onSubmit={handleSubmit}>
+        <CoverPicker
+          src={cover.preview || (cover.removed ? null : cover.savedUrl)}
+          onSelect={selectCover}
+          onRemove={removeCover}
+        />
+
         <div className="grid grid--pairs">
           <Input label={t('builder.titleEn')} value={form.titleEn} maxLength={200} onChange={update('titleEn')} />
           <Input

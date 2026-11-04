@@ -5,6 +5,7 @@ const SELECT = `
          s.is_active  AS "isActive",
          s.require_login AS "requireLogin",
          s.show_score AS "showScore",
+         s.cover_updated_at AS "coverUpdatedAt",
          s.created_at AS "createdAt",
          s.updated_at AS "updatedAt",
          (SELECT COUNT(*)::int FROM questions q WHERE q.survey_id = s.id) AS "questionCount",
@@ -43,6 +44,28 @@ export const Survey = {
               show_score    = COALESCE($6, show_score)
         WHERE id = $1`,
       [id, toJson(title), toJson(description), isActive ?? null, requireLogin ?? null, showScore ?? null],
+    );
+    return rowCount ? Survey.findById(id) : null;
+  },
+
+  async findCover(id) {
+    const { rows } = await query(
+      `SELECT cover_image AS data, cover_image_type AS type, cover_updated_at AS "updatedAt"
+         FROM surveys WHERE id = $1 AND cover_image IS NOT NULL`,
+      [id],
+    );
+    return rows[0] || null;
+  },
+
+  // Pass data = null to remove the cover.
+  async setCover(id, { data, type }) {
+    const { rowCount } = await query(
+      `UPDATE surveys
+          SET cover_image      = $2,
+              cover_image_type = $3,
+              cover_updated_at = CASE WHEN $2::bytea IS NULL THEN NULL ELSE NOW() END
+        WHERE id = $1`,
+      [id, data, data ? type : null],
     );
     return rowCount ? Survey.findById(id) : null;
   },

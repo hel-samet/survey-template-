@@ -11,7 +11,7 @@ import { useAsync } from '../hooks/useAsync.js';
 import { useLanguage } from '../hooks/useLanguage.js';
 import { formatError } from '../questionTypes.js';
 import { googleAuth, isGoogleSignInConfigured } from '../services/googleAuth.js';
-import { responseApi, surveyApi } from '../services/surveyService.js';
+import { coverUrl, responseApi, surveyApi } from '../services/surveyService.js';
 
 // Key for the respondent-name field in `errors`; matches the API's error detail key.
 const NAME_KEY = 'respondentName';
@@ -115,7 +115,7 @@ export default function SurveyPage() {
   if (needsLogin && user === null) {
     return (
       <div className="container survey">
-        <SurveyHeader title={tl(survey.title)} description={tl(survey.description)} />
+        <SurveyHeader title={tl(survey.title)} description={tl(survey.description)} cover={coverUrl(survey)} />
         <SignInCard onSignIn={() => signIn()} busy={signingIn} error={signInError} />
       </div>
     );
@@ -205,6 +205,7 @@ export default function SurveyPage() {
       <SurveyHeader
         title={tl(survey.title)}
         description={tl(survey.description)}
+        cover={coverUrl(survey)}
         answered={answeredCount}
         total={questions.length}
       />

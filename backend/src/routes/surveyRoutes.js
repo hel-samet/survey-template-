@@ -1,15 +1,22 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import {
   createSurvey,
+  deleteCover,
   deleteSurvey,
+  getCover,
   getPublicSurvey,
   getStats,
   getSurvey,
   listAllSurveys,
   listPublicSurveys,
   updateSurvey,
+  uploadCover,
 } from '../controllers/surveyController.js';
 import { requireAuth } from '../middleware/authMiddleware.js';
+import { MAX_COVER_BYTES } from '../validators/surveyValidator.js';
+
+// Cover uploads are sent as the raw image body (Content-Type: image/jpeg|png|webp).
+const rawImage = express.raw({ type: 'image/*', limit: MAX_COVER_BYTES });
 
 const router = Router();
 
@@ -22,6 +29,9 @@ router.get('/stats', requireAuth, getStats);
 
 router.get('/:id', getPublicSurvey);
 router.get('/:id/admin', requireAuth, getSurvey);
+router.get('/:id/cover', getCover);
+router.put('/:id/cover', requireAuth, rawImage, uploadCover);
+router.delete('/:id/cover', requireAuth, deleteCover);
 router.post('/', requireAuth, createSurvey);
 router.put('/:id', requireAuth, updateSurvey);
 router.delete('/:id', requireAuth, deleteSurvey);

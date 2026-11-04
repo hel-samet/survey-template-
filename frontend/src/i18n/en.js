@@ -142,6 +142,12 @@ const en = {
       'Respondents sign in with Google and can submit only once. You can let someone answer again from the Responses page.',
     requireLoginNotConfigured:
       'Google sign-in is not set up yet, so respondents will not be able to open this survey. Add the Firebase settings first.',
+    cover: 'Cover image',
+    coverAdd: 'Add a cover image',
+    coverHint: 'JPEG, PNG or WebP. A wide image works best (about 1600 × 530 px).',
+    coverChange: 'Change',
+    coverRemove: 'Remove',
+    coverInvalid: 'Choose a JPEG, PNG or WebP image.',
     titleRequired: 'Enter a title in at least one language.',
     createAndContinue: 'Create and add questions',
   },

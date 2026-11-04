@@ -1020,6 +1020,96 @@ select.field__control {
   font-size: clamp(1.5rem, 4vw, 1.9rem);
 }
 
+/* Cover banner: bleeds to the card edges and replaces the gradient strip and icon */
+.survey-header--cover {
+  padding-top: 0;
+}
+
+.survey-header--cover::before {
+  display: none;
+}
+
+.survey-header__cover {
+  display: block;
+  width: calc(100% + 3rem);
+  max-width: none;
+  margin: 0 -1.5rem 1.4rem;
+  aspect-ratio: 3 / 1;
+  object-fit: cover;
+  background: var(--surface-muted);
+}
+
+/* .card padding drops to 1.15rem on phones */
+@media (max-width: 600px) {
+  .survey-header__cover {
+    width: calc(100% + 2.3rem);
+    margin: 0 -1.15rem 1.2rem;
+    aspect-ratio: 2 / 1;
+  }
+}
+
+/* Cover image field in the survey builder */
+.cover-picker {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.cover-picker__image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 1;
+  object-fit: cover;
+}
+
+.cover-picker__actions {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.cover-picker__actions .btn {
+  box-shadow: var(--shadow);
+}
+
+.cover-picker--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  aspect-ratio: 5 / 1;
+  min-height: 120px;
+  padding: 1rem;
+  border: 1.5px dashed var(--border-strong);
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.cover-picker--empty:hover,
+.cover-picker--empty:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--primary-softer);
+  color: var(--primary);
+}
+
+.cover-picker--empty:focus-visible {
+  box-shadow: var(--focus);
+}
+
+.cover-picker__cta {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
 .survey-header__desc {
   color: var(--text-muted);
   font-size: 1.02rem;
